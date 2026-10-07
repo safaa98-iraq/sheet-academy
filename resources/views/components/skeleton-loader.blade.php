@@ -1,0 +1,1 @@
+<div class="skeleton-page" role="status" aria-label="جارٍ تحميل المحتوى"><span class="sr-only">جارٍ التحميل…</span><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-banner"></div><div class="course-grid">@for($i=0;$i<4;$i++)<div class="skeleton skeleton-card"></div>@endfor</div></div>

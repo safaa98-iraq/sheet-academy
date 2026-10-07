@@ -1,0 +1,18 @@
+{
+  "name": "sheet-academy-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Secure desktop shell for Sheet Academy",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "node prepare-build.cjs && electron-builder --config build.config.cjs --win nsis",
+    "dist:mac": "node prepare-build.cjs && electron-builder --config build.config.cjs --mac dmg zip",
+    "dist:linux": "node prepare-build.cjs && electron-builder --config build.config.cjs --linux AppImage deb"
+  },
+  "devDependencies": {
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "electron-updater": "^6.8.9"
+  }
+}

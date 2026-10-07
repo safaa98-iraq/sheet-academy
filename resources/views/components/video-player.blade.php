@@ -1,0 +1,33 @@
+@props(['lesson', 'preview' => false])
+<div {{ $attributes->merge(['class' => 'academy-player']) }} data-academy-player data-preview="{{ $preview ? 'true' : 'false' }}" data-lesson-id="{{ $lesson['id'] }}" data-duration="{{ $lesson['duration'] }}" data-initial-position="{{ $lesson['position_seconds'] ?? 0 }}" data-initial-completed="{{ ($lesson['completed'] ?? false) ? 'true' : 'false' }}" data-stream-session-url="{{ $lesson['stream_url'] ?? '' }}" data-preferred-quality="{{ $lesson['preferred_quality'] ?? 'auto' }}" data-preferred-speed="{{ $lesson['preferred_speed'] ?? 1 }}" data-preferred-muted="{{ ($lesson['preferred_muted'] ?? false) ? 'true' : 'false' }}" tabindex="0" role="region" aria-label="مشغّل درس {{ $lesson['title'] }}">
+    <div class="player-resume" data-player-resume hidden role="status"><span>تابع من <b data-resume-time dir="ltr">00:00</b></span><button type="button" data-restart>ابدأ من البداية</button><button type="button" data-resume-dismiss aria-label="إغلاق تذكير المتابعة">×</button></div>
+    <div class="player-stage" data-player-stage>
+        @if(!empty($lesson['stream_url']))<video class="academy-hls-video" data-hls-video playsinline preload="none" controlslist="nodownload noremoteplayback" disablepictureinpicture aria-label="فيديو {{ $lesson['title'] }}"></video>@endif
+        @if($preview)<div class="lecture-slide" aria-hidden="true">
+            <div class="lecture-caption"><span>DENTAL ANATOMY</span><h2>كل تفصيلة<br>تصنع الفارق.</h2><p>رحلة إلى داخل السن</p><span class="lecture-rule"></span><small>د. سليم أحمد · {{ $lesson['course_title'] }}</small></div>
+            <svg class="lecture-tooth" viewBox="0 0 360 410" fill="none">
+                <defs><linearGradient id="tooth-enamel" x1="91" y1="54" x2="264" y2="329" gradientUnits="userSpaceOnUse"><stop stop-color="#fcfbf5"/><stop offset=".5" stop-color="#dce9e3"/><stop offset="1" stop-color="#93b9af"/></linearGradient><linearGradient id="tooth-dentin" x1="110" y1="120" x2="218" y2="292"><stop stop-color="#efe4c6"/><stop offset="1" stop-color="#b4ac8c"/></linearGradient><radialGradient id="tooth-glow"><stop stop-color="#617f7c" stop-opacity=".4"/><stop offset="1" stop-color="#617f7c" stop-opacity="0"/></radialGradient></defs>
+                <circle cx="186" cy="196" r="176" fill="url(#tooth-glow)"/>
+                <g stroke="#72938d" stroke-opacity=".25"><circle cx="180" cy="194" r="146"/><circle cx="180" cy="194" r="118"/><path d="M15 194h330M180 24v345"/></g>
+                <path d="M90 71c-27 18-23 72-9 106 12 28 21 48 25 85 5 43 12 85 31 85 17 0 16-53 24-85 5-22 21-23 27-1 9 35 9 86 27 86 19 0 24-56 29-85 6-40 14-57 28-89 15-36 20-83-9-103-24-17-54-8-76 1-8 3-17 3-25 0-27-11-49-15-72 0Z" fill="url(#tooth-enamel)" stroke="#ecf2e9" stroke-width="2"/>
+                <path d="M105 95c-21 16-13 46 1 78 12 29 18 57 22 91 3 18 4 30 8 39l8-54c5-27 15-41 30-41 20 0 31 20 36 46l6 49c6-11 8-32 11-54 4-33 14-55 25-81 11-26 19-58-1-72-20-14-45 5-75 4-27-1-52-21-71-5Z" fill="url(#tooth-dentin)"/>
+                <path d="M135 128c-11 10-4 28 3 48 7 23 15 32 20 62 3-35 12-56 23-56 17 0 24 23 28 56 7-30 10-43 21-65 7-16 12-34 1-43-12-9-27 5-48 5-20 0-37-17-48-7Z" fill="#b77f79"/>
+                <path d="m139 333 19-107m55 107-5-91m-35-40 3-45" stroke="#8d5957" stroke-width="3" stroke-linecap="round"/>
+                <path d="M97 101c-12 25-2 47 7 62M119 81c14-5 30 5 44 9" stroke="white" stroke-width="7" stroke-linecap="round" opacity=".75"/>
+                <g stroke="#abc4bc" stroke-width="1"><path d="m247 102 45-19h30"/><circle cx="247" cy="102" r="3" fill="#abc4bc"/><path d="m231 159 61 8h35"/><circle cx="231" cy="159" r="3" fill="#abc4bc"/><path d="m185 168-116 42H25"/><circle cx="185" cy="168" r="3" fill="#abc4bc"/></g>
+                <g fill="#cfdfd9" font-size="11" font-family="sans-serif"><text x="292" y="72">ENAMEL</text><text x="293" y="156">DENTIN</text><text x="27" y="199">PULP</text></g>
+            </svg>
+            <span class="lecture-slide-number">01 / 08</span>
+        </div>@endif
+        @if($preview)<button type="button" class="player-big-play" data-play aria-label="تشغيل الدرس"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7Z"/></svg></button><span class="player-demo-label">معاينة تفاعلية</span>@endif
+        <span class="player-watermark" data-player-watermark aria-hidden="true">{{ $preview ? 'معاينة تعليمية' : ($lesson['watermark'] ?? 'محتوى تعليمي مرخّص') }}</span>
+    </div>
+    @if($preview || !empty($lesson['stream_url']))<div class="player-controls">
+        <div class="player-timeline"><span class="player-watched" data-watched-marker title="أبعد نقطة مشاهدة"></span><input type="range" data-seek min="0" max="{{ $lesson['duration'] }}" step="1" value="0" aria-label="نقطة مشاهدة الدرس"></div>
+        <div class="player-controls-row">
+            <div class="player-controls-group"><button type="button" data-play class="player-control" aria-label="تشغيل الدرس"><span data-play-icon aria-hidden="true">▶</span></button><button type="button" class="player-control skip-control" data-skip="-10" aria-label="تأخير عشر ثوان" title="تأخير 10 ثوان"><span aria-hidden="true">↶</span><small>10</small></button><button type="button" class="player-control skip-control" data-skip="10" aria-label="تقديم عشر ثوان" title="تقديم 10 ثوان"><span aria-hidden="true">↷</span><small>10</small></button><span class="player-time" data-player-time dir="ltr">00:00 / {{ gmdate('i:s', (int) $lesson['duration']) }}</span></div>
+            <div class="player-controls-group player-settings"><button type="button" class="player-control" data-mute aria-label="كتم الصوت" title="كتم الصوت"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M11 4 5 9H2v6h3l6 5ZM15 8c3 2 3 6 0 8M18 5c5 4 5 10 0 14"/></svg></button><input class="player-volume" type="range" min="0" max="1" step="0.05" value="0.8" data-volume aria-label="مستوى الصوت"><label class="player-speed"><span class="sr-only">سرعة التشغيل</span><select data-speed aria-label="سرعة التشغيل">@foreach([0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as $speed)<option value="{{ $speed }}" @selected($speed === 1)>{{ $speed }}×</option>@endforeach</select></label><x-quality-menu :available="$lesson['available_resolutions'] ?? []" /><button type="button" class="player-control" data-fullscreen aria-label="ملء الشاشة" title="ملء الشاشة"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6"/></svg></button></div>
+        </div>
+    </div>@endif
+    <p class="player-announcement sr-only" aria-live="polite" data-player-announcement></p>
+</div>

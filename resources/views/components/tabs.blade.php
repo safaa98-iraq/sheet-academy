@@ -1,0 +1,2 @@
+@props(['items','active'=>null])
+<nav {{ $attributes->class('tabs') }} role="tablist">@foreach($items as $id=>$label)<button type="button" role="tab" id="tab-{{ $id }}" aria-controls="panel-{{ $id }}" aria-selected="{{ ($active ?? array_key_first($items)) === $id ? 'true':'false' }}" data-tab="{{ $id }}" @class(['active'=>($active ?? array_key_first($items))===$id])>{{ $label }}</button>@endforeach</nav>

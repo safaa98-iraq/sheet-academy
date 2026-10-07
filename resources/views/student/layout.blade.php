@@ -1,0 +1,23 @@
+@php
+$preview = $preview ?? false;
+$page = $page ?? match(true) { request()->routeIs('student.learning')=>'learning', request()->routeIs('student.course*')=>'course', request()->routeIs('student.lesson*')=>'lesson', request()->routeIs('student.viewer')=>'viewer', request()->routeIs('student.playlist')=>'playlist', default=>'progress' };
+$studentName = $preview ? 'أحمد' : (auth('student')->user()?->name ?? 'طالب');
+$previewHome = isset($previewCourseId) ? route('admin.courses.preview', $previewCourseId) : route('student.learning');
+$nav = ['learning'=>['التعلّم الخاص بي','book'], 'playlist'=>['قائمة التشغيل','list'], 'progress'=>['تقدّمي','chart']];
+@endphp
+<!doctype html><html lang="ar" dir="rtl"><head>@include('components.head', ['title'=>$title ?? ($nav[$page][0] ?? 'مساحتك التعليمية')])</head>
+<body class="student-body {{ $page==='lesson'?'is-player':'' }}" data-storage-scope="{{ $preview ? 'preview' : 'student-'.auth('student')->id() }}" data-protected="{{ in_array($page,['lesson','viewer','course'])?'true':'false' }}" data-preview="{{ $preview?'true':'false' }}" @unless($preview) data-student-activity-url="{{ route('student.activity.store') }}" data-view-link-issue-url="{{ route('student.view-links.issue') }}" data-view-link-close-url="{{ route('student.view-links.close') }}" data-progress-url-template="{{ route('student.progress.store', ['lesson' => 'LESSON_ID']) }}" data-progress-heartbeat="{{ config('learning.heartbeat_seconds', 12) }}" data-student-watermark="{{ app(\App\Services\StudentAuditService::class)->watermarkText(auth('student')->user()) }}" @endunless>
+<a class="skip-link" href="#main-content">انتقل إلى المحتوى</a>
+<header class="topbar">
+<a class="brand" href="{{ $preview?$previewHome:route('student.learning') }}"><span class="brand-mark"><x-icon name="tooth"/></span><span>عيادة التعلّم<small>معرفة تصنع الفرق</small></span></a>
+<form id="student-search" class="search" role="search" action="{{ $preview?route('student.learning'):route('student.learning') }}"><x-icon name="search"/><input type="search" name="q" value="{{ request('q') }}" data-course-search-input aria-label="ابحث في موادك" placeholder="ماذا تريد أن تتعلّم اليوم؟"><kbd>⌕</kbd></form>
+<nav class="main-nav" aria-label="التنقل الرئيسي">@foreach($nav as $key=>$item)<a @class(['active'=>$page===$key]) href="{{ $preview?route('student.'.$key):route('student.'.$key) }}">{{ $key==='learning'?'موادي':$item[0] }}</a>@endforeach</nav>
+<div class="header-actions"><button class="icon-btn mobile-search-toggle" data-search-toggle aria-label="فتح البحث" aria-controls="student-search" aria-expanded="false"><x-icon name="search"/></button><button class="icon-btn" data-theme aria-label="تبديل الوضع الليلي"><x-icon name="moon"/></button><span class="header-divider"></span><details class="dropdown account-dropdown"><summary aria-label="قائمة الحساب"><span class="avatar">{{ mb_substr($studentName,0,1) }}</span><x-icon name="chevron-down"/></summary><div class="dropdown-menu"><strong>{{ $studentName }}</strong><small class="muted">{{ $preview?'حساب المعاينة':'حساب الطالب' }}</small><a href="{{ $preview?route('student.progress'):route('student.progress') }}">عرض تقدّمي</a>@if($preview)<a href="{{ route('admin.dashboard') }}">معاينة مساحة الأستاذ</a><a href="{{ route('student.login') }}">تسجيل الدخول</a><hr><small class="muted">حالات الواجهة</small>@foreach(['ready'=>'المحتوى','loading'=>'التحميل','empty'=>'فارغة','error'=>'خطأ'] as $state=>$label)<a href="{{ request()->fullUrlWithQuery(['state'=>$state]) }}">{{ $label }}</a>@endforeach @else<form method="post" action="{{ route('student.logout') }}">@csrf<button class="text-button" type="submit">تسجيل الخروج</button></form>@endif</div></details></div>
+</header>
+<nav class="mobile-nav" aria-label="التنقل على الهاتف">@foreach($nav as $key=>$item)<a @class(['active'=>$page===$key]) href="{{ $preview?route('student.'.$key):route('student.'.$key) }}"><x-icon :name="$item[1]"/>{{ $item[0] }}</a>@endforeach</nav>
+<div id="main-content"><x-page-state :state="$preview?request('state','ready'):'ready'">@yield('content')</x-page-state></div>
+<footer class="footer"><a class="brand" href="{{ $preview?route('student.learning'):route('student.learning') }}"><x-icon name="tooth"/>عيادة التعلّم</a><span>خطوة اليوم، تصنع طبيب الغد.</span><small>© {{ date('Y') }} جميع الحقوق محفوظة</small></footer>
+<x-toast/>
+<script type="application/json" nonce="{{ $cspNonce ?? '' }}" id="learning-data">@json($courseCards ?? (isset($selectedCourse) && $selectedCourse ? [$selectedCourse]:[]))</script>
+<script type="application/json" nonce="{{ $cspNonce ?? '' }}" id="initial-progress">@json($progressSnapshot ?? [])</script>
+</body></html>
