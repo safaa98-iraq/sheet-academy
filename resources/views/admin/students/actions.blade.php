@@ -14,17 +14,14 @@
     </div>
     <p class="muted">التجميد والإيقاف يمنعان الوصول مع الاحتفاظ بالبيانات والتقدّم. استخدم إعادة التفعيل للسماح بالدخول مجدداً.</p>
     <h3>رمز الدخول</h3>
-    @if($student->tokens->isNotEmpty())
-        <button type="button" class="btn" data-reveal-student-token="{{ route('admin.students.token.reveal', $student) }}" data-student-name="{{ $student->name }}"><x-icon name="eye"/><span>عرض التوكن ونسخه</span></button>
-    @endif
-    <p class="muted">التوكن هو مفتاح دخول الطالب. جرّب عرضه ونسخه أولاً؛ إصدار رمز جديد يُبطل الرمز السابق.</p>
+    <p class="muted">الرمز محفوظ كتجزئة فقط ويظهر مرة واحدة عند إصداره. إذا فُقد، أصدر رمزاً جديداً.</p>
     <details class="student-token-options"><summary><x-icon name="key"/> إصدار توكن جديد وتحديد صلاحيته</summary>
     @if($student->status === 'active')
-        <p class="muted">الرمز الجديد يلغي السابق ويمكن عرضه ونسخه من ملف الطالب.</p>
+        <p class="muted">الرمز الجديد يلغي السابق وجلساته، ويظهر مرة واحدة بعد الإصدار.</p>
         <form method="post" action="{{ route('admin.students.token', $student) }}" data-confirm="سيُلغى رمز الدخول السابق. هل تريد إصدار رمز جديد؟">
             @csrf
             <label>انتهاء صلاحية التوكن (اختياري)<input type="datetime-local" name="expires_at" value="{{ old('expires_at') }}"></label>
-            <label>عدد الأجهزة المتزامنة<select name="device_limit">@foreach(range(1, 10) as $limit)<option value="{{ $limit }}" @selected((int) old('device_limit', $student->tokens->first()?->device_limit ?? config('audit.device_limit', 1)) === $limit)>{{ $limit }}</option>@endforeach</select></label>
+            <label>عدد الأجهزة المتزامنة<select name="device_limit">@foreach(range(1, 1) as $limit)<option value="{{ $limit }}" @selected((int) old('device_limit', $student->tokens->first()?->device_limit ?? config('audit.device_limit', 1)) === $limit)>{{ $limit }}</option>@endforeach</select></label>
             <button class="btn primary" style="margin-top:16px"><x-icon name="key"/><span>إصدار توكن جديد</span></button>
         </form>
     @else

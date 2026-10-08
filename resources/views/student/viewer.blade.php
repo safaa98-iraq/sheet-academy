@@ -31,7 +31,7 @@
                         <rect x="52" y="56" width="32" height="5" rx="2" fill="#a46734"/>
                         <text x="665" y="66" text-anchor="end" fill="#34443f" font-family="sans-serif" font-size="15">عيادة التعلّم</text>
                         <text x="665" y="125" text-anchor="end" fill="#202725" font-family="sans-serif" font-size="30" font-weight="bold">{{ $pageTitle }}</text>
-                        <text x="665" y="158" text-anchor="end" fill="#77807a" font-family="sans-serif" font-size="14">DENTAL ANATOMY · CHAPTER {{ $loop->iteration }}</text>
+                        <text x="665" y="158" text-anchor="end" fill="#77807a" font-family="sans-serif" font-size="14">تشريح الأسنان · الفصل {{ $loop->iteration }}</text>
                         <line x1="54" x2="666" y1="183" y2="183" stroke="#dde1db"/>
                         <rect x="54" y="220" width="612" height="416" rx="8" fill="{{ ['#eef3ef', '#f0efea', '#edf0f3'][$loop->index] }}"/>
                         <g transform="translate(192 219) scale(.92)">

@@ -1,3 +1,4 @@
+import { guardWatermark } from './watermark-guard';
 import { getProgress, saveProgress, storageScope } from './progress-store';
 import { initPlayers, formatTime } from './player';
 import { initViewers } from './viewer';
@@ -67,12 +68,27 @@ const auditEvent = (event, lessonId = null) => {
 window.reportStudentActivity = auditEvent;
 document.addEventListener('protection:blocked', event => {
     const action = event.detail?.action;
-    if (['copy', 'cut', 'contextmenu', 'shortcut'].includes(action)) auditEvent('suspicious_copy');
+    if (['copy', 'cut', 'paste', 'dragstart', 'contextmenu', 'shortcut'].includes(action)) auditEvent('suspicious_copy');
+    if (action === 'devtools') auditEvent('suspicious_devtools');
     if (action === 'print') auditEvent('suspicious_print');
 });
 document.addEventListener('protection:devtools', event => { if (event.detail?.suspected) auditEvent('suspicious_devtools'); });
 document.addEventListener('protection:watermark-tamper', event => auditEvent('suspicious_watermark', event.detail?.lessonId));
 
+
+if (document.body.dataset.preview !== 'true' && document.body.dataset.studentWatermark) {
+    document.querySelectorAll('[data-text-protected]').forEach(container => {
+        container.style.position = 'relative';
+        const mark = document.createElement('span');
+        mark.className = 'text-watermark';
+        mark.dataset.textWatermark = '';
+        mark.textContent = document.body.dataset.studentWatermark;
+        container.append(mark);
+        guardWatermark({container, selector: '[data-text-watermark]', text: mark.textContent,
+            isVisible: () => !container.closest('[hidden]'),
+            onTamper: () => {container.replaceChildren(); auditEvent('suspicious_watermark', document.querySelector('[data-lesson-page]')?.dataset.lessonPayload ? JSON.parse(document.querySelector('[data-lesson-page]').dataset.lessonPayload).id : null);}});
+    });
+}
 document.addEventListener('click', async event => {
     const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
     if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.target === '_blank') return;

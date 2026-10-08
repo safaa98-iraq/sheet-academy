@@ -27,6 +27,7 @@ class RolePermissionController extends Controller
             'permission_ids' => ['sometimes', 'array'],
             'permission_ids.*' => ['integer', 'distinct', 'exists:permissions,id'],
         ], ['required' => 'هذا الحقل مطلوب.', 'unique' => 'اسم الدور مستخدم مسبقاً.']);
+        abort_unless($request->user('web')->canDelegatePermissions($data['permission_ids'] ?? []), 403);
         $role = Role::create(['name' => $data['name'], 'label' => $data['label'], 'guard_name' => 'web']);
         $role->permissions()->sync($data['permission_ids'] ?? []);
 
@@ -40,6 +41,7 @@ class RolePermissionController extends Controller
             'permission_ids' => ['sometimes', 'array'],
             'permission_ids.*' => ['integer', 'distinct', 'exists:permissions,id'],
         ], ['exists' => 'إحدى الصلاحيات المحددة غير موجودة.']);
+        abort_unless($request->user('web')->canDelegatePermissions($data['permission_ids'] ?? []), 403);
         $role->permissions()->sync($data['permission_ids'] ?? []);
 
         return back()->with('status', 'تم تحديث مصفوفة الصلاحيات.');

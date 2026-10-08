@@ -13,14 +13,15 @@ class StudentTokenService
     /** @return array{token: string, record: StudentToken} */
     public function issue(Student $student, ?User $actor = null, ?Carbon $expiresAt = null, ?int $deviceLimit = null): array
     {
-        $deviceLimit = max(1, min(10, $deviceLimit ?? (int) config('audit.device_limit', 1)));
+        $deviceLimit = 1;
 
         return DB::transaction(function () use ($student, $actor, $expiresAt, $deviceLimit): array {
-            $student->tokens()->where('status', 'active')->update(['status' => 'revoked']);
+            $student->newQuery()->whereKey($student->id)->lockForUpdate()->firstOrFail();
+            $student->tokens()->whereIn('status', ['active', 'frozen', 'suspended'])->update(['status' => 'revoked']);
+            $student->devices()->whereNull('revoked_at')->update(['revoked_at' => now(), 'view_link_hash' => null]);
 
             $plainTextToken = bin2hex(random_bytes(32));
             $record = $student->tokens()->create([
-                'encrypted_token' => $plainTextToken,
                 'token_hash' => hash('sha256', $plainTextToken),
                 'status' => 'active',
                 'device_limit' => $deviceLimit,

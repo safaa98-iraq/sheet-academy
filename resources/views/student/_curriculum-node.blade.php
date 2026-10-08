@@ -7,7 +7,7 @@
     </a>
 @else
     <details class="curriculum-student-node" @if($node['type']==='part') open @endif>
-        <summary>{{ $node['title'] }}</summary>
+        <summary>{{ $node['title'] }} <small class="muted">{{ $node['progress_percent'] ?? 0 }}٪ مكتمل</small></summary>
         <div class="curriculum-student-tree">
             @foreach($node['children'] as $child)@include('student._curriculum-node',['node'=>$child])@endforeach
         </div>

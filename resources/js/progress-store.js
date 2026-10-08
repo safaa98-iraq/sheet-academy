@@ -68,7 +68,7 @@ function persistServerProgress(lessonId, progress, options = {}) {
     };
 
     if (options.beacon && navigator.sendBeacon) {
-        const body = new URLSearchParams({...payload, _token: csrf});
+        const body = new URLSearchParams({...payload, is_playing: options.isPlaying === true ? '1' : '0', _token: csrf});
         navigator.sendBeacon(endpoint, body);
         return;
     }

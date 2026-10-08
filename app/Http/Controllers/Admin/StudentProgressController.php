@@ -75,7 +75,7 @@ class StudentProgressController extends Controller
             fputcsv($output, ['الطالب', 'البريد', 'الحالة', 'مواد مسجلة', 'دروس مكتملة', 'نسبة الإكمال', 'وقت المشاهدة بالدقائق', 'آخر نشاط'], ',', '"', '\\');
             foreach ($this->exportQuery($filters)->cursor() as $student) {
                 fputcsv($output, [
-                    $student->name, $student->email, $student->status, $student->courses_count,
+                    $this->csvText($student->name), $this->csvText($student->email), $student->status, $student->courses_count,
                     $student->completed_lessons_count,
                     $student->available_duration_seconds > 0 ? (int) round($student->progress_score / $student->available_duration_seconds * 100) : 0,
                     (int) round((int) $student->watched_seconds_total / 60), $student->last_learning_at,
@@ -83,6 +83,13 @@ class StudentProgressController extends Controller
             }
             fclose($output);
         }, 'student-progress.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function csvText(?string $text): string
+    {
+        $text ??= '';
+
+        return preg_match('/\A[\x00-\x20]*[=+\-@]/', $text) === 1 ? "'".$text : $text;
     }
 
     public function printable(Request $request): View
