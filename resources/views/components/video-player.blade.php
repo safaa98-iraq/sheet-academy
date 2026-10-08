@@ -3,7 +3,7 @@
     <div class="player-resume" data-player-resume hidden role="status"><span>تابع من <b data-resume-time dir="ltr">00:00</b></span><button type="button" data-restart>ابدأ من البداية</button><button type="button" data-resume-dismiss aria-label="إغلاق تذكير المتابعة">×</button></div>
     <div class="player-stage" data-player-stage>
         @if(!empty($lesson['stream_url']))<video class="academy-hls-video" data-hls-video playsinline preload="none" controlslist="nodownload noremoteplayback" disablepictureinpicture aria-label="فيديو {{ $lesson['title'] }}"></video>@endif
-        @if($preview)<div class="lecture-slide" aria-hidden="true">
+        @if($preview && empty($lesson['stream_url']))<div class="lecture-slide" aria-hidden="true">
             <div class="lecture-caption"><span>DENTAL ANATOMY</span><h2>كل تفصيلة<br>تصنع الفارق.</h2><p>رحلة إلى داخل السن</p><span class="lecture-rule"></span><small>د. سليم أحمد · {{ $lesson['course_title'] }}</small></div>
             <svg class="lecture-tooth" viewBox="0 0 360 410" fill="none">
                 <defs><linearGradient id="tooth-enamel" x1="91" y1="54" x2="264" y2="329" gradientUnits="userSpaceOnUse"><stop stop-color="#fcfbf5"/><stop offset=".5" stop-color="#dce9e3"/><stop offset="1" stop-color="#93b9af"/></linearGradient><linearGradient id="tooth-dentin" x1="110" y1="120" x2="218" y2="292"><stop stop-color="#efe4c6"/><stop offset="1" stop-color="#b4ac8c"/></linearGradient><radialGradient id="tooth-glow"><stop stop-color="#617f7c" stop-opacity=".4"/><stop offset="1" stop-color="#617f7c" stop-opacity="0"/></radialGradient></defs>
@@ -19,7 +19,7 @@
             </svg>
             <span class="lecture-slide-number">01 / 08</span>
         </div>@endif
-        @if($preview)<button type="button" class="player-big-play" data-play aria-label="تشغيل الدرس"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7Z"/></svg></button><span class="player-demo-label">معاينة تفاعلية</span>@endif
+        @if($preview && empty($lesson['stream_url']))<button type="button" class="player-big-play" data-play aria-label="تشغيل الدرس"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7Z"/></svg></button><span class="player-demo-label">معاينة تفاعلية</span>@endif
         <span class="player-watermark" data-player-watermark aria-hidden="true">{{ $preview ? 'معاينة تعليمية' : ($lesson['watermark'] ?? 'محتوى تعليمي مرخّص') }}</span>
     </div>
     @if($preview || !empty($lesson['stream_url']))<div class="player-controls">

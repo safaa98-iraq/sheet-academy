@@ -24,7 +24,7 @@ class StoreLessonRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:180'],
-            'type' => ['required', 'in:video,text,file'],
+            'type' => ['required', 'in:video,text,file,document,pdf,image'],
             'duration_seconds' => ['nullable', 'integer', 'min:0', 'max:86400'],
             'position' => ['nullable', 'integer', 'min:0'],
             'is_published' => ['sometimes', 'boolean'],

@@ -551,6 +551,26 @@ export function initPlayers() {
         if (!element.querySelector('[data-hls-video]') && element.dataset.preview !== 'true') return;
         const player = initializePlayer(element);
         const page = element.closest('[data-lesson-page]');
-        if (page) initializeLessonPage(page, player);
+        if (page) { initializeLessonPage(page, player); page.dataset.detailsInitialized = 'true'; }
+    });
+    document.querySelectorAll('[data-lesson-page]').forEach(page => {
+        if (page.dataset.detailsInitialized) return;
+        initializeLessonPage(page, {seekTo: () => {}, get state() { return {position: 0}; }});
+        page.dataset.detailsInitialized = 'true';
     });
 }
+
+document.querySelectorAll('[data-video-pending-url]').forEach(panel => {
+    if (!['queued', 'processing'].includes(panel.dataset.videoPendingStatus)) return;
+    const timer = setInterval(async () => {
+        if (document.hidden) return;
+        try {
+            const response = await fetch(panel.dataset.videoPendingUrl, {credentials: 'same-origin', headers: {'Accept': 'application/json'}, cache: 'no-store'});
+            if (!response.ok) { clearInterval(timer); return; }
+            const {status} = await response.json();
+            if (status === 'ready') { clearInterval(timer); location.reload(); }
+            else if (status === 'failed') { clearInterval(timer); panel.querySelector('.eyebrow').textContent = 'تعذّر تجهيز الفيديو'; }
+        } catch { /* Retry on the next tick after a temporary connection failure. */ }
+    }, 5000);
+    window.addEventListener('pagehide', () => clearInterval(timer), {once: true});
+});

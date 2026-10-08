@@ -332,6 +332,31 @@ qsa('[data-video-upload]').forEach(panel => {
         resolutionBox.hidden = status.status !== 'ready';
         retryButton.hidden = status.status !== 'failed';
         if (status.error) message.textContent = status.error;
+        if (['queued', 'processing', 'ready'].includes(status.status)) {
+            const type = document.querySelector('#lecture-content-form [name="type"]') || panel.closest('form')?.querySelector('[name="content_type"]');
+            if (type) type.value = 'video';
+        }
+        if (status.status === 'ready') {
+            const duration = document.querySelector('#lecture-content-form [name="duration_seconds"]');
+            if (duration && status.duration_seconds != null) duration.value = status.duration_seconds;
+            const available = status.resolutions.map(Number);
+            const enabled = status.enabled_resolutions.map(Number);
+            resolutionBox.querySelectorAll('[data-video-resolution-row]').forEach(row => {
+                if (!available.includes(Number(row.querySelector('input').value))) row.remove();
+            });
+            available.forEach(height => {
+                let input = resolutionBox.querySelector(`[data-video-resolution][value="${height}"]`);
+                if (!input) {
+                    const row = document.createElement('div'); row.className = 'video-resolution-row'; row.dataset.videoResolutionRow = '';
+                    const label = document.createElement('label');
+                    input = document.createElement('input'); input.type = 'checkbox'; input.value = height; input.dataset.videoResolution = '';
+                    label.append(input, document.createTextNode(` بث ${height}p`)); row.append(label);
+                    resolutionBox.insertBefore(row, resolutionBox.querySelector('[data-save-video-resolutions]'));
+                }
+                if (statusText.dataset.resolutions !== JSON.stringify(available)) input.checked = enabled.includes(height);
+            });
+            statusText.dataset.resolutions = JSON.stringify(available);
+        }
         return status;
     };
     const fingerprintFile = async file => {
@@ -353,11 +378,15 @@ qsa('[data-video-upload]').forEach(panel => {
         const button = event.currentTarget;
         button.disabled = true;
         try {
+            if (window.academySaveLecture) await window.academySaveLecture();
+            fileInput.disabled = true;
             const fingerprint = await fingerprintFile(file);
             message.textContent = 'جارٍ تجهيز الرفع القابل للاستئناف…';
             await new Promise((resolve, reject) => {
                 const upload = new tus.Upload(file, {
                     endpoint: panel.dataset.startUrl,
+                    fingerprint: async () => `academy:${panel.dataset.startUrl}:${fingerprint}`,
+                    removeFingerprintOnSuccess: true,
                     chunkSize: 4 * 1024 * 1024,
                     retryDelays: [0, 1000, 3000, 5000, 10000],
                     metadata: {filename: file.name, fingerprint},
@@ -389,6 +418,7 @@ qsa('[data-video-upload]').forEach(panel => {
             refreshVideoStatus().catch(() => {});
         } finally {
             button.disabled = false;
+            fileInput.disabled = false;
         }
     });
     retryButton.addEventListener('click', async () => {
@@ -441,11 +471,41 @@ qsa('[data-rich-editor]').forEach(surface => {
     const form = surface.closest('form');
     const field = qs('[data-rich-value]', form);
     const toolbar = surface.parentElement.querySelector('.rich-text-toolbar');
-    toolbar?.querySelectorAll('[data-rich-command]').forEach(button => button.addEventListener('click', () => {
-        surface.focus();
-        document.execCommand(button.dataset.richCommand, false);
-    }));
-    form?.addEventListener('submit', () => { if (field) field.value = surface.innerHTML; });
+    const sync = () => {
+        if (field) field.value = surface.innerHTML;
+        const count = form.querySelector('[data-rich-count]');
+        if (count) count.textContent = `${surface.textContent.length.toLocaleString('ar-IQ')} حرف`;
+    };
+    let selection;
+    surface.addEventListener('keyup', () => { selection = window.getSelection()?.rangeCount ? window.getSelection().getRangeAt(0).cloneRange() : null; });
+    surface.addEventListener('mouseup', () => { selection = window.getSelection()?.rangeCount ? window.getSelection().getRangeAt(0).cloneRange() : null; });
+    toolbar?.querySelectorAll('[data-rich-command]').forEach(button => {
+        button.addEventListener('mousedown', event => event.preventDefault());
+        button.addEventListener('click', () => {
+            surface.focus();
+            if (selection && surface.contains(selection.commonAncestorContainer)) {
+                window.getSelection().removeAllRanges(); window.getSelection().addRange(selection);
+            }
+            let argument = button.dataset.richArgument ?? null;
+            if (button.dataset.richCommand === 'createLink') {
+                argument = window.prompt('أدخل رابطاً يبدأ بـ https:// أو http:// أو mailto:');
+                if (!argument) return;
+                argument = argument.trim();
+                if (!/^(https?:\/\/|mailto:)/i.test(argument)) { toast('أدخل رابطاً صالحاً.'); return; }
+            }
+            document.execCommand(button.dataset.richCommand, false, argument);
+            sync(); surface.dispatchEvent(new Event('input', {bubbles: true}));
+        });
+    });
+    surface.addEventListener('paste', event => {
+        event.preventDefault();
+        document.execCommand('insertText', false, event.clipboardData.getData('text/plain'));
+        sync();
+    });
+    surface.addEventListener('input', sync);
+    form?.addEventListener('submit', sync);
+    form?.addEventListener('lecture:sync', sync);
+    sync();
 });
 
 const courseOrder = qs('[data-course-order]');

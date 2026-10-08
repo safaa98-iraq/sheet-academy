@@ -93,7 +93,10 @@ class LearningUi
                     $lesson = [
                         'id' => $lessonId, 'title' => $model->title, 'duration' => $model->duration_seconds,
                         'type' => $model->type, 'position' => $model->position, 'chapter' => $currentSectionTitle ?? 'محتوى المادة',
-                        'stream_url' => ! $preview && $model->video?->status === 'ready' ? route('student.video.session', ['video' => $model->video, 'view' => request()->query('view')]) : null,
+                        'stream_url' => $model->video?->status === 'ready' ? ($preview
+                            ? route('admin.videos.preview-session', $model->video)
+                            : route('student.video.session', ['video' => $model->video, 'view' => request()->query('view')])) : null,
+                        'video_status_url' => $preview ? route('admin.lessons.video-status', $model) : route('student.lessons.video-status', ['lesson' => $model, 'view' => request()->query('view')]),
                         'video_status' => $model->video?->status ?? $model->video_status,
                         'available_resolutions' => $model->video?->available_resolutions ?? [],
                         'watermark' => $student !== null ? app(StudentAuditService::class)->watermarkText($student) : '',

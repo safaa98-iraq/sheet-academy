@@ -125,21 +125,21 @@ class VideoUploadService
         }
 
         $lesson = $upload->lesson;
+        $jobId = (string) Str::uuid();
         $video = LessonVideo::query()->updateOrCreate(['lesson_id' => $lesson->id], [
-            'status' => 'queued', 'source_path' => $upload->path, 'source_mime' => $mime, 'source_size' => $upload->expected_size,
+            'status' => 'queued', 'job_id' => $jobId, 'source_path' => $upload->path, 'source_mime' => $mime, 'source_size' => $upload->expected_size,
             'output_path' => 'hls/'.$lesson->id, 'key_path' => 'video-keys/'.$lesson->id.'.key',
             'enabled_resolutions' => [360, 480, 720, 1080], 'available_resolutions' => [], 'error_message' => null,
         ]);
         $upload->update(['status' => 'complete']);
-        $lesson->update(['video_status' => 'queued', 'video_reference' => 'video:'.$video->id, 'available_resolutions' => []]);
+        $lesson->update(['type' => 'video', 'video_status' => 'queued', 'video_reference' => 'video:'.$video->id, 'available_resolutions' => []]);
 
         try {
-            $jobId = $gateway->enqueue([
-                'job_id' => (string) Str::uuid(), 'video_id' => $video->id, 'lesson_id' => $lesson->id,
+            $gateway->enqueue([
+                'job_id' => $jobId, 'video_id' => $video->id, 'lesson_id' => $lesson->id,
                 'source_path' => $video->source_path, 'output_path' => $video->output_path, 'key_path' => $video->key_path,
                 'enabled_resolutions' => $video->enabled_resolutions,
             ]);
-            $video->update(['job_id' => $jobId]);
         } catch (Throwable $exception) {
             $video->update(['status' => 'failed', 'error_message' => 'تعذّر إرسال الفيديو إلى قائمة المعالجة.']);
             $lesson->update(['video_status' => 'failed']);

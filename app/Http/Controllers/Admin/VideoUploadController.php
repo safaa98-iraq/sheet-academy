@@ -5,11 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StartVideoUploadRequest;
 use App\Models\Lesson;
+use App\Models\LessonVideo;
 use App\Models\VideoUpload;
 use App\Video\VideoProcessingGateway;
+use App\Video\VideoStreamService;
 use App\Video\VideoUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,6 +21,50 @@ use Throwable;
 
 class VideoUploadController extends Controller
 {
+    public function previewSession(LessonVideo $video): JsonResponse
+    {
+        $this->authorizePreview($video);
+        $expiresAt = now()->addMinutes(8);
+
+        return response()->json([
+            'manifest_url' => URL::temporarySignedRoute('admin.videos.preview-asset', $expiresAt, ['video' => $video->id, 'asset' => 'hls/master.m3u8']),
+            'expires_at' => $expiresAt->toIso8601String(),
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function previewAsset(LessonVideo $video, string $asset, VideoStreamService $streams): Response
+    {
+        $this->authorizePreview($video);
+        abort_unless(preg_match('/\A(?:hls\/(?:master\.m3u8|v[1-9]\d{0,3}\/(?:index\.m3u8|segment_\d+\.ts)))\z/D', $asset) === 1, 404);
+        $path = $video->output_path.'/'.substr($asset, 4);
+        abort_unless(Storage::disk('private')->exists($path), 404);
+        if (str_ends_with($path, '.m3u8')) {
+            return response($streams->rewritePlaylist($video, null, $path, Storage::disk('private')->get($path), ''), 200, [
+                'Content-Type' => 'application/vnd.apple.mpegurl', 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff',
+            ]);
+        }
+
+        return response()->file(Storage::disk('private')->path($path), [
+            'Content-Type' => 'video/mp2t', 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    public function previewKey(LessonVideo $video): Response
+    {
+        $this->authorizePreview($video);
+        abort_unless($video->key_path && Storage::disk('private')->exists($video->key_path), 404);
+
+        return response(Storage::disk('private')->get($video->key_path), 200, [
+            'Content-Type' => 'application/octet-stream', 'Cache-Control' => 'private, no-store', 'Pragma' => 'no-cache',
+        ]);
+    }
+
+    private function authorizePreview(LessonVideo $video): void
+    {
+        abort_unless($video->status === 'ready' && $video->lesson?->course !== null, 404);
+        $this->authorize('view', $video->lesson->course);
+    }
+
     public function start(StartVideoUploadRequest $request, Lesson $lesson, VideoUploadService $uploads): Response
     {
         abort_unless($request->header('Tus-Resumable') === '1.0.0', 412);
