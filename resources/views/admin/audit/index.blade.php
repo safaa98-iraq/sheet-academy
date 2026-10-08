@@ -12,6 +12,7 @@
         'document_opened' => 'فتح ملزمة', 'suspicious_devtools' => 'أدوات مطور', 'suspicious_copy' => 'محاولة نسخ',
         'suspicious_print' => 'محاولة طباعة', 'suspicious_watermark' => 'عبث بالبصمة', 'stale_view_link' => 'رابط قديم',
         'automatic_suspension' => 'إيقاف تلقائي',
+        'suspicious_activity_flood' => 'تجاوز حد طلبات النشاط',
     ];
 @endphp
 <div class="admin-head"><div><span class="eyebrow">المراقبة والنزاهة</span><h1>سجل نشاط الطلاب</h1><p class="muted">الأحداث، عناوين الاتصال، ونقاط المخالفات المسجلة.</p></div></div>

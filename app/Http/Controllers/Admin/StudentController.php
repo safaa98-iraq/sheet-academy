@@ -72,7 +72,7 @@ class StudentController extends Controller
             return $student;
         });
 
-        return redirect()->route('admin.students.index')->with('status', 'تم إنشاء حساب الطالب. يمكنك عرض رمز الوصول ونسخه من ملف الطالب.');
+        return redirect()->route('admin.students.index')->with('status', 'تم إنشاء حساب الطالب. يظهر رمز الوصول مرة واحدة. انسخه الآن.');
     }
 
     /**
@@ -137,12 +137,8 @@ class StudentController extends Controller
     public function revealToken(Student $student): JsonResponse
     {
         $this->authorize('update', $student);
-        $token = $student->tokens()->latest('id')->first();
-        if ($token === null || $token->encrypted_token === null) {
-            return response()->json(['message' => 'هذا الرمز القديم محفوظ كتجزئة فقط ولا يمكن عرضه. أصدر توكناً جديداً ليصبح قابلاً للعرض والنسخ.'], 422)->header('Cache-Control', 'private, no-store');
-        }
 
-        return response()->json(['token' => $token->encrypted_token])->header('Cache-Control', 'private, no-store');
+        return response()->json(['message' => 'رمز الدخول محفوظ كتجزئة فقط ويظهر مرة واحدة عند إصداره. أصدر رمزاً جديداً إذا فقدته.'], 422)->header('Cache-Control', 'private, no-store');
     }
 
     public function regenerate(Student $student, StudentTokenService $tokens, Request $request): RedirectResponse
@@ -153,13 +149,13 @@ class StudentController extends Controller
         }
         $data = $request->validate([
             'expires_at' => ['nullable', 'date', 'after:now'],
-            'device_limit' => ['sometimes', 'required', 'integer', 'between:1,10'],
+            'device_limit' => ['sometimes', 'required', 'integer', 'in:1'],
         ], [
             'expires_at.date' => 'أدخل تاريخ انتهاء صالحاً.',
             'expires_at.after' => 'تاريخ انتهاء الرمز يجب أن يكون في المستقبل.',
             'device_limit.required' => 'حدد عدد الأجهزة المسموح بها.',
             'device_limit.integer' => 'عدد الأجهزة يجب أن يكون عدداً صحيحاً.',
-            'device_limit.between' => 'عدد الأجهزة يجب أن يكون بين 1 و10.',
+            'device_limit.in' => 'يسمح بجلسة واحدة فقط لكل طالب.',
         ]);
         $deviceLimit = (int) ($data['device_limit'] ?? $student->tokens()->latest('id')->value('device_limit'));
         $issued = $tokens->issue($student, $request->user('web'),
@@ -177,6 +173,9 @@ class StudentController extends Controller
         $data = $request->validated();
         DB::transaction(function () use ($student, $data): void {
             $student->update(['status' => $data['status']]);
+            if ($data['status'] !== 'active') {
+                $student->devices()->whereNull('revoked_at')->update(['revoked_at' => now(), 'view_link_hash' => null]);
+            }
             $student->tokens()->whereIn('status', ['active', 'frozen', 'suspended'])->update(['status' => $data['status']]);
         });
 

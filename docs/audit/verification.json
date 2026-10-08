@@ -1,0 +1,81 @@
+{
+  "scope": "local isolated audit 2026-10-08; not production certification",
+  "php_sqlite": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 116,
+    "passed": 116,
+    "assertions": 883,
+    "duration_ms": 4994
+  },
+  "php_mysql": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 116,
+    "passed": 116,
+    "assertions": 883,
+    "duration_ms": 7290
+  },
+  "node": {
+    "tests": 9,
+    "passed": 9,
+    "failed": 0
+  },
+  "browser": {
+    "checks": 45,
+    "javascript_errors": 0,
+    "original_source_urls": 0
+  },
+  "upload": {
+    "results": [
+      {
+        "name": "stage → course → lecture created through teacher UI",
+        "result": "PASS"
+      },
+      {
+        "name": "interrupted upload resumes from server HEAD offset",
+        "result": "PASS 131072 bytes"
+      },
+      {
+        "name": "wrong chunk offset",
+        "result": "BLOCKED 422"
+      },
+      {
+        "name": "real Redis queue → FFmpeg → authenticated callback",
+        "result": "PASS queued → processing → ready"
+      },
+      {
+        "name": "generated adaptive resolutions",
+        "result": "360 / 480 / 720"
+      },
+      {
+        "name": "upload updates lesson type and teacher status",
+        "result": "PASS"
+      },
+      {
+        "name": "worker API without service token",
+        "result": "BLOCKED 401"
+      }
+    ],
+    "lessonId": 1,
+    "bytes": 36636389
+  },
+  "commands": {
+    "pint": "passed",
+    "view_cache": "passed",
+    "route_cache": "passed",
+    "node_check_worker": "passed",
+    "node_check_electron": "passed",
+    "public_original_media_scan": "zero files",
+    "composer_advisories": 0,
+    "npm_web_vulnerabilities": 0,
+    "npm_worker_vulnerabilities": 0,
+    "npm_electron_vulnerabilities": 0
+  },
+  "limitations": [
+    "Authorized AES-HLS decryption works; not DRM",
+    "All DOM tampering and DevTools cannot be detected reliably",
+    "No native Safari/iOS, installed PWA or signed Electron device certification",
+    "No live VPS deployment or backup restoration performed"
+  ]
+}

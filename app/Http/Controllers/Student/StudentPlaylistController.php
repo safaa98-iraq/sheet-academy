@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Lesson;
 use App\Models\StudentPlaylist;
 use App\Models\StudentPlaylistItem;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,8 @@ class StudentPlaylistController extends Controller
             ? $student->playlists()->findOrFail($request->integer('playlist_id'))
             : $student->playlists()->firstOrCreate(['name' => 'قائمتي']);
         $playlist->load(['items.lesson.course', 'items.lesson.progress' => fn ($query) => $query->where('student_id', $student->id)]);
+        $playlist->setRelation('items', $playlist->items->filter(fn ($item): bool => $item->lesson !== null
+            && Gate::forUser($student)->allows('viewByStudent', $item->lesson)));
         $courses = $student->accessibleCourses()->visibleForStudents()->with(['lessons' => fn ($query) => $query->visibleForStudents()->orderBy('title')])->orderBy('title')->get();
 
         return view('student.playlist', ['playlist' => $playlist, 'playlists' => $student->playlists()->orderBy('id')->get(), 'courses' => $courses]);
@@ -34,7 +37,7 @@ class StudentPlaylistController extends Controller
         return redirect()->route('student.playlist')->with('status', 'أُنشئت قائمة التشغيل.');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $data = $request->validate([
             'lesson_id' => ['required', 'integer', 'exists:lessons,id'],
@@ -46,15 +49,21 @@ class StudentPlaylistController extends Controller
         $playlist = isset($data['playlist_id'])
             ? $student->playlists()->findOrFail($data['playlist_id'])
             : $student->playlists()->firstOrCreate(['name' => 'قائمتي']);
-        $playlist->items()->firstOrCreate(['lesson_id' => $lesson->id], ['position' => (int) $playlist->items()->max('position') + 1]);
+        $item = $playlist->items()->firstOrCreate(['lesson_id' => $lesson->id], ['position' => (int) $playlist->items()->max('position') + 1]);
+        if ($request->expectsJson()) {
+            return response()->json(['item_id' => $item->id]);
+        }
 
         return back()->with('status', 'أُضيف الدرس إلى قائمة التشغيل.');
     }
 
-    public function destroy(Request $request, StudentPlaylistItem $item): RedirectResponse
+    public function destroy(Request $request, StudentPlaylistItem $item): RedirectResponse|JsonResponse
     {
         abort_unless($item->playlist()->where('student_id', $request->user('student')->id)->exists(), 404);
         $item->delete();
+        if ($request->expectsJson()) {
+            return response()->json(['removed' => true]);
+        }
 
         return back()->with('status', 'حُذف الدرس من القائمة.');
     }

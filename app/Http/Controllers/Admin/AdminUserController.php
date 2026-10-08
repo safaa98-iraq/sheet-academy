@@ -35,6 +35,7 @@ class AdminUserController extends Controller
     public function store(StoreAdminRequest $request): RedirectResponse
     {
         $data = $request->validated();
+        abort_unless($request->user('web')->canDelegateRoles($data['role_ids']), 403);
         $user = User::create(['name' => $data['name'], 'email' => $data['email'], 'password' => Hash::make($data['password']), 'is_active' => true]);
         $user->roles()->sync($data['role_ids']);
 
@@ -65,6 +66,7 @@ class AdminUserController extends Controller
         abort_if($admin->is_super_admin, 403);
         abort_if($admin->is($request->user('web')), 422, 'لا يمكن تعطيل حسابك من هذه الصفحة.');
         $data = $request->validated();
+        abort_unless($request->user('web')->canDelegateRoles($data['role_ids']), 403);
         $admin->fill(['name' => $data['name'], 'email' => $data['email'], 'is_active' => $data['is_active']]);
         if (filled($data['password'] ?? null)) {
             $admin->password = Hash::make($data['password']);
