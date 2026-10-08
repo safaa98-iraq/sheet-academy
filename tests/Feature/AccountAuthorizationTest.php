@@ -143,8 +143,8 @@ class AccountAuthorizationTest extends TestCase
             ->assertRedirect();
 
         $course = Course::where('title', 'تشريح الأسنان')->firstOrFail();
-        $this->post("/admin/courses/{$course->id}/lessons", ['title' => 'مقدمة', 'type' => 'video', 'duration_seconds' => 600, 'is_published' => '1'])
-            ->assertRedirect(route('admin.courses.edit', $course));
+        $response = $this->post("/admin/courses/{$course->id}/lessons", ['title' => 'مقدمة', 'type' => 'video', 'duration_seconds' => 600, 'is_published' => '1']);
+        $response->assertRedirect(route('admin.lessons.edit', $course->lessons()->sole()));
         $this->assertDatabaseHas('lessons', ['course_id' => $course->id, 'title' => 'مقدمة', 'is_published' => true]);
     }
 }

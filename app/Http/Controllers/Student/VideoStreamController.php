@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
+use App\Models\Lesson;
 use App\Models\LessonVideo;
 use App\Models\Student;
 use App\Video\VideoStreamService;
@@ -15,6 +16,14 @@ use Symfony\Component\HttpFoundation\Response;
 
 class VideoStreamController extends Controller
 {
+    public function status(Request $request, Lesson $lesson): JsonResponse
+    {
+        abort_unless(Gate::forUser($request->user('student'))->allows('viewByStudent', $lesson), 404);
+
+        return response()->json(['status' => $lesson->video?->status ?? $lesson->video_status])
+            ->header('Cache-Control', 'private, no-store');
+    }
+
     public function session(Request $request, LessonVideo $video): JsonResponse
     {
         $student = $request->user('student');

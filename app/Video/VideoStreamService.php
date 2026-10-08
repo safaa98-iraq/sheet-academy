@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\URL;
 
 class VideoStreamService
 {
-    public function rewritePlaylist(LessonVideo $video, Student $student, string $storedPath, string $playlist, string $viewLink): string
+    public function rewritePlaylist(LessonVideo $video, ?Student $student, string $storedPath, string $playlist, string $viewLink): string
     {
         $expiresAt = now()->addMinutes(8);
         $enabled = array_map('intval', $video->enabled_resolutions ?? $video->available_resolutions ?? []);
@@ -42,7 +42,9 @@ class VideoStreamService
         $relativeDirectory = dirname(substr($storedPath, strlen($video->output_path) + 1));
         $rewritten = preg_replace_callback('/URI="([^"]+)"/', function (array $match) use ($video, $student, $expiresAt, $viewLink): string {
             if ($match[1] === 'key') {
-                $url = URL::temporarySignedRoute('student.video.key', $expiresAt, ['video' => $video->id, 'student' => $student->id, 'view' => $viewLink]);
+                $url = $student === null
+                    ? URL::temporarySignedRoute('admin.videos.preview-key', $expiresAt, ['video' => $video->id])
+                    : URL::temporarySignedRoute('student.video.key', $expiresAt, ['video' => $video->id, 'student' => $student->id, 'view' => $viewLink]);
 
                 return 'URI="'.$url.'"';
             }
@@ -61,8 +63,12 @@ class VideoStreamService
         return implode("\n", $lines);
     }
 
-    private function signedAssetUrl(LessonVideo $video, Student $student, string $asset, Carbon $expiresAt, string $viewLink): string
+    private function signedAssetUrl(LessonVideo $video, ?Student $student, string $asset, Carbon $expiresAt, string $viewLink): string
     {
+        if ($student === null) {
+            return URL::temporarySignedRoute('admin.videos.preview-asset', $expiresAt, ['video' => $video->id, 'asset' => $asset]);
+        }
+
         return URL::temporarySignedRoute('student.video.asset', $expiresAt, ['video' => $video->id, 'student' => $student->id, 'asset' => $asset, 'view' => $viewLink]);
     }
 }

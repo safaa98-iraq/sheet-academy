@@ -4,7 +4,8 @@
     $navigation = [
         ['admin', 'الرئيسية', 'chart', 'admin.dashboard', 'dashboard.view'],
         ['grade-levels', 'المراحل الصفية', 'book', 'admin.grade-levels.index', 'courses.view'],
-        ['curriculum', 'المواد والمحتوى', 'book', 'admin.courses.index', 'courses.view'],
+        ['lessons', 'المحاضرات والمحتوى', 'layers', 'admin.lessons.index', 'courses.view'],
+        ['curriculum', 'المواد والكتب', 'book', 'admin.courses.index', 'courses.view'],
         ['students', 'إدارة الطلاب', 'user', 'admin.students.index', 'students.view'],
         ['student-progress', 'تقدم الطلاب', 'chart', 'admin.student-progress', 'students.view'],
         ['admins', 'الفريق والصلاحيات', 'shield', 'admin.admins.index', 'admins.manage'],

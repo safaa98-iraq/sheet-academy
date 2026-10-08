@@ -133,6 +133,7 @@ Route::middleware(['auth:student', 'student.token', 'student.device', 'student.a
     })->name('student.progress');
     Route::post('/logout', [StudentTokenAuthController::class, 'destroy'])->name('student.logout');
     Route::put('/player-preferences', [PlayerPreferenceController::class, 'update'])->name('student.player-preferences.update');
+    Route::get('/lessons/{lesson}/video-status', [VideoStreamController::class, 'status'])->middleware(['student.view-link', 'throttle:student-media'])->name('student.lessons.video-status');
     Route::get('/videos/{video}/session', [VideoStreamController::class, 'session'])->middleware(['student.view-link', 'throttle:student-media'])->name('student.video.session');
     Route::get('/videos/{video}/student/{student}/key', [VideoStreamController::class, 'key'])->middleware(['signed', 'student.view-link', 'throttle:student-media'])->name('student.video.key');
     Route::get('/videos/{video}/student/{student}/{asset}', [VideoStreamController::class, 'asset'])->where('asset', '.*')->middleware(['signed', 'student.view-link', 'throttle:student-media'])->name('student.video.asset');
@@ -194,6 +195,10 @@ Route::middleware(['auth:web', 'admin.active'])->prefix('admin')->name('admin.')
     Route::get('/courses/{course}/preview', [CurriculumController::class, 'preview'])->middleware('permission:courses.view')->name('courses.preview');
     Route::put('/curriculum-nodes/{node}', [CurriculumController::class, 'update'])->middleware('permission:courses.manage')->name('curriculum-nodes.update');
     Route::delete('/curriculum-nodes/{node}', [CurriculumController::class, 'destroy'])->middleware('permission:courses.manage')->name('curriculum-nodes.destroy');
+    Route::get('/lessons', [LessonController::class, 'index'])->middleware('permission:courses.view')->name('lessons.index');
+    Route::get('/videos/{video}/preview-session', [VideoUploadController::class, 'previewSession'])->middleware('permission:courses.view')->name('videos.preview-session');
+    Route::get('/videos/{video}/preview-key', [VideoUploadController::class, 'previewKey'])->middleware(['permission:courses.view', 'signed'])->name('videos.preview-key');
+    Route::get('/videos/{video}/preview/{asset}', [VideoUploadController::class, 'previewAsset'])->where('asset', '.*')->middleware(['permission:courses.view', 'signed'])->name('videos.preview-asset');
     Route::post('/lessons/{lesson}/attachments', [LessonAttachmentController::class, 'store'])->middleware('permission:courses.manage')->name('lessons.attachments.store');
     Route::options('/lessons/{lesson}/video-uploads', [VideoUploadController::class, 'options'])->middleware('permission:courses.manage')->name('lessons.video-uploads.options');
     Route::post('/lessons/{lesson}/video-uploads', [VideoUploadController::class, 'start'])->middleware(['permission:courses.manage', 'throttle:video-upload'])->name('lessons.video-uploads.start');

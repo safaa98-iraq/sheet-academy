@@ -12,7 +12,7 @@
     <button class="btn primary" style="margin-top:18px">حفظ المادة</button>
 </form>
 @if($course->exists)
-    <div class="admin-head"><div><h2>منهج المادة</h2><p class="muted">إدارة الأجزاء والفصول والأقسام والدروس من محرر واحد.</p></div><a class="btn primary" href="{{ route('admin.courses.curriculum',$course) }}">فتح محرر المنهج</a></div>
+    <div class="admin-head"><div><h2>محاضرات المادة</h2><p class="muted">أضف المحاضرات والفيديوهات والنصوص والمرفقات مباشرة.</p></div><a class="btn primary" href="{{ route('admin.lessons.index',['grade_level_id'=>$course->grade_level_id,'course_id'=>$course->id]) }}">إدارة المحاضرات</a></div>
     <section class="admin-form"><h2>تسجيل الطلاب</h2><p class="muted">هذه القائمة لطلاب الوصول إلى مواد محددة. طلاب المرحلة الكاملة يصلون تلقائياً إلى مواد مرحلتهم ويُعدّل نطاق وصولهم من ملف الطالب. حفظ الاختيار يستبدل التسجيلات المباشرة.</p>
         <form method="post" action="{{ route('admin.courses.students.sync',$course) }}">@csrf @method('PUT')
             <label>الطلاب<select name="student_ids[]" multiple size="8">@foreach($students as $student)<option value="{{ $student->id }}" @selected($course->students->contains('id',$student->id))>{{ $student->name }}{{ $student->email?' · '.$student->email:'' }}</option>@endforeach</select></label>
