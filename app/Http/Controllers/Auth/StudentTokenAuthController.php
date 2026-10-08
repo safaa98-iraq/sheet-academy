@@ -10,6 +10,7 @@ use App\Services\StudentAuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class StudentTokenAuthController extends Controller
 {
@@ -36,20 +37,24 @@ class StudentTokenAuthController extends Controller
         $request->session()->regenerate();
         $request->session()->put('student_token_id', $studentToken->id);
         $studentToken->forceFill(['last_used_at' => now()])->save();
-        $device = StudentDevice::query()->create([
-            'student_id' => $student->id, 'student_token_id' => $studentToken->id,
-            'device_name' => mb_substr((string) $request->userAgent(), 0, 255),
-            'ip_address' => $request->ip(), 'user_agent' => mb_substr((string) $request->userAgent(), 0, 2000),
-            'session_id' => $request->session()->getId(), 'last_seen_at' => now(),
-        ]);
-        $request->session()->put('student_device_id', $device->id);
-        $deviceLimit = max(1, min(10, (int) $studentToken->device_limit));
-        $activeDevices = StudentDevice::query()->where('student_id', $student->id)->whereNull('revoked_at')->latest('id')->get();
-        foreach ($activeDevices->skip($deviceLimit) as $previousDevice) {
-            $previousDevice->forceFill(['revoked_at' => now(), 'view_link_hash' => null])->save();
-            $audit->record($student, 'multiple_device_login', $request, ['device_id' => $previousDevice->id], $previousDevice);
-        }
-        $audit->record($student, 'login_succeeded', $request, [], $device);
+        DB::transaction(function () use ($student, $studentToken, $request, $audit): void {
+            $student->newQuery()->whereKey($student->id)->lockForUpdate()->firstOrFail();
+            abort_unless($studentToken->fresh()?->status === 'active', 404);
+            $device = StudentDevice::query()->create([
+                'student_id' => $student->id, 'student_token_id' => $studentToken->id,
+                'device_name' => mb_substr((string) $request->userAgent(), 0, 255),
+                'ip_address' => $request->ip(), 'user_agent' => mb_substr((string) $request->userAgent(), 0, 2000),
+                'session_id' => $request->session()->getId(), 'last_seen_at' => now(),
+            ]);
+            $request->session()->put('student_device_id', $device->id);
+            $deviceLimit = 1;
+            $activeDevices = StudentDevice::query()->where('student_id', $student->id)->whereNull('revoked_at')->latest('id')->get();
+            foreach ($activeDevices->skip($deviceLimit) as $previousDevice) {
+                $previousDevice->forceFill(['revoked_at' => now(), 'view_link_hash' => null])->save();
+                $audit->record($student, 'multiple_device_login', $request, ['device_id' => $previousDevice->id], $previousDevice);
+            }
+            $audit->record($student, 'login_succeeded', $request, [], $device);
+        }, attempts: 3);
 
         return redirect()->route($student->content_agreement_accepted_at ? 'student.learning' : 'student.agreement.show');
     }

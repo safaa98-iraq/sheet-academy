@@ -31,7 +31,7 @@ class StoreStudentRequest extends FormRequest
             'course_ids' => ['exclude_if:access_type,grade', 'sometimes', 'array'],
             'course_ids.*' => ['integer', 'distinct', Rule::exists('courses', 'id')->whereNull('deleted_at')],
             'expires_at' => ['nullable', 'date', 'after:now'],
-            'device_limit' => ['nullable', 'integer', 'min:1', 'max:10'],
+            'device_limit' => ['nullable', 'integer', 'in:1'],
         ];
     }
 

@@ -19,6 +19,7 @@ class StudentAuditService
         'document_opened' => 0, 'lesson_opened' => 0, 'suspicious_devtools' => 3, 'suspicious_copy' => 2,
         'suspicious_print' => 2, 'suspicious_watermark' => 5, 'multiple_device_login' => 5,
         'stale_view_link' => 1, 'automatic_suspension' => 0,
+        'suspicious_activity_flood' => 5,
     ];
 
     /** @param array<string, mixed> $metadata */
@@ -68,7 +69,9 @@ class StudentAuditService
 
     public function watermarkText(Student $student): string
     {
-        return $student->name.' · رقم الطالب '.str_pad((string) $student->id, 6, '0', STR_PAD_LEFT);
+        $identifier = strtoupper(substr(hash_hmac('sha256', 'watermark:'.$student->id, (string) config('app.key')), 0, 16));
+
+        return $identifier.' · رقم الطالب '.str_pad((string) $student->id, 6, '0', STR_PAD_LEFT).' · '.$student->name;
     }
 
     private function notifyAdminsWhenNeeded(?Student $student, string $event, Request $request, int $points, int $priorPoints): void
@@ -98,6 +101,7 @@ class StudentAuditService
             'suspicious_watermark' => 'عبثت الصفحة بطبقة البصمة المرئية.',
             'multiple_device_login' => 'أنهى تسجيل دخول جديد جلسة جهاز آخر.',
             'stale_view_link' => 'محاولة فتح رابط مشاهدة قديم أو منتهي.',
+            'suspicious_activity_flood' => 'تجاوز حد طلبات النشاط؛ أُبطل رابط العرض لحماية المحتوى.',
             default => 'سُجل نشاط يحتاج مراجعة.',
         };
     }

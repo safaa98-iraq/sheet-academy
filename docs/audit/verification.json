@@ -1,0 +1,84 @@
+{
+  "date": "2026-10-08",
+  "php": "8.4.1",
+  "laravel": "13.34.0",
+  "node": "v24.19.0",
+  "mysql": "8.0.46",
+  "sqlite": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 114,
+    "passed": 114,
+    "assertions": 864,
+    "duration_ms": 4968
+  },
+  "mysql_test": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 114,
+    "passed": 114,
+    "assertions": 864,
+    "duration_ms": 7443
+  },
+  "node_tests": {
+    "tests": 8,
+    "passed": 8,
+    "failed": 0,
+    "output": "\n> test:js\n> node --test tests/Unit/*.test.mjs\n\n✔ progress survives a reload and keeps separate lesson positions (2.420962ms)\n✔ accounts cannot see each other’s local progress (0.346763ms)\n✔ positions are finite and clamped to the lesson duration (0.374214ms)\n✔ partial updates preserve completion and report a progress event (0.348927ms)\n✔ blocked storage retains progress for the current visit (0.551252ms)\n✔ corrupted saved data does not break the player (0.374095ms)\n✔ page exit sends a Laravel-compatible beacon with the saved position (0.587797ms)\n✔ FFprobe refuses network media references and storage traversal (95.452733ms)\nℹ tests 8\nℹ suites 0\nℹ pass 8\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 197.777597\n"
+  },
+  "browser_checks": 44,
+  "browser_javascript_errors": 0,
+  "real_upload_worker_smoke": {
+    "lessonId": "43",
+    "checks": [
+      "dependent selectors",
+      "create lecture",
+      "automatic content saving",
+      "resumable upload",
+      "BullMQ processing",
+      "FFmpeg encrypted HLS",
+      "ready resolutions without reload",
+      "desktop/mobile layout",
+      "real video playback",
+      "attachments",
+      "lesson tabs",
+      "notes"
+    ],
+    "consoleErrors": []
+  },
+  "build": "passed",
+  "pint": "passed",
+  "view_cache": "passed",
+  "route_cache": "passed then cleared",
+  "public_original_media_pdf_keys": 0,
+  "dependency_audits": {
+    "composer": {
+      "advisories": 0,
+      "abandoned": 0
+    },
+    "npm": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "worker": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "electron": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    }
+  }
+}

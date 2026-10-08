@@ -1,8 +1,8 @@
+import { guardWatermark, toggleProtectedFullscreen } from './watermark-guard';
 export function initViewers() {
     document.querySelectorAll('[data-document-viewer]').forEach((viewer) => {
         if (viewer.dataset.initialized) return;
         viewer.dataset.initialized = 'true';
-        if (window.ACADEMY_SETTINGS?.watermark === false) viewer.querySelectorAll('[data-viewer-watermark]').forEach(mark => mark.style.display = 'none');
         const pages = [...viewer.querySelectorAll('[data-document-page]')];
         let currentPage = 0;
         let zoom = 1;
@@ -40,8 +40,7 @@ export function initViewers() {
         viewer.querySelector('[data-viewer-fit]').addEventListener('click', () => { zoom = 1; render(); });
         viewer.querySelector('[data-viewer-fullscreen]').addEventListener('click', async () => {
             try {
-                if (document.fullscreenElement) await document.exitFullscreen();
-                else if (viewer.requestFullscreen) await viewer.requestFullscreen();
+                await toggleProtectedFullscreen(viewer);
             } catch {
                 viewer.querySelector('[data-viewer-announcement]').textContent = 'تعذّر فتح العارض بملء الشاشة.';
             }
@@ -72,42 +71,22 @@ export function initViewers() {
             };
             window.setInterval(refreshPageLinks, 4 * 60 * 1000);
             const watermarkText = viewer.dataset.studentWatermark || 'محتوى تعليمي مرخّص';
-            const restoreWatermarks = () => {
-                let changed = false;
-                pages.forEach((page) => {
-                    for (const watermark of page.querySelectorAll('[data-document-watermark]')) {
-                        if (watermark.textContent !== watermarkText) watermark.textContent = watermarkText;
-                        const style = getComputedStyle(watermark);
-                        if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) < 0.12) {
-                            watermark.style.removeProperty('display');
-                            watermark.style.removeProperty('visibility');
-                            watermark.style.opacity = '.48';
-                            changed = true;
-                        }
-                    }
-                    if (!page.querySelector('[data-document-watermark]')) {
-                        [18, 50, 82].forEach((vertical) => {
-                            const watermark = document.createElement('span');
-                            watermark.className = 'document-watermark';
-                            watermark.dataset.documentWatermark = '';
-                            watermark.style.setProperty('--watermark-y', `${vertical}%`);
-                            watermark.textContent = watermarkText;
-                            page.append(watermark);
-                        });
-                        changed = true;
-                    }
-                });
-                if (changed) window.reportStudentActivity?.('suspicious_watermark', viewer.dataset.lessonId);
+            const stopViewer = () => {
+                viewer.querySelectorAll('[data-document-image], .document-thumbnail-sheet img').forEach(image => image.removeAttribute('src'));
+                canvas.hidden = true;
+                announcement.textContent = 'أُوقف العرض لحماية المحتوى. افتح الملزمة مجدداً.';
             };
-            const watermarkObserver = new MutationObserver(restoreWatermarks);
-            pages.forEach((page) => watermarkObserver.observe(page, {subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden']}));
-            restoreWatermarks();
+            pages.forEach(page => guardWatermark({container: page, selector: '[data-document-watermark]', text: watermarkText,
+                isVisible: () => !page.hidden && page.querySelector('[data-document-image]')?.naturalWidth > 0,
+                onTamper: () => { stopViewer(); window.reportStudentActivity?.('suspicious_watermark', viewer.dataset.lessonId); }}));
+            document.addEventListener('student:session-ended', stopViewer);
             window.setInterval(() => {
                 pages[currentPage]?.querySelectorAll('[data-document-watermark]').forEach((watermark) => {
-                    watermark.style.insetInlineStart = `${8 + Math.random() * 48}%`;
+                    const parent = watermark.parentElement;
+                    const room = Math.max(0, 84 - watermark.offsetWidth / parent.clientWidth * 100);
+                    watermark.style.insetInlineStart = `${8 + Math.random() * room}%`;
                 });
             }, 9000);
-            window.addEventListener('pagehide', () => watermarkObserver.disconnect(), {once: true});
         }
         new ResizeObserver(render).observe(canvas);
         render();

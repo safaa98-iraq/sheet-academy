@@ -33,6 +33,10 @@ class StudentActivityController extends Controller
             abort_unless(Gate::forUser($student)->allows('viewByStudent', $lesson), 404);
         }
         $audit->record($student, $data['event'], $request, array_filter(['lesson_id' => $lessonId]), $device);
+        if (in_array($data['event'], ['suspicious_watermark', 'suspicious_devtools'], true)) {
+            $device->forceFill(['view_link_hash' => null])->save();
+            $request->session()->forget('active_view_link');
+        }
         if ($student->fresh()->status !== 'active') {
             return response()->json(['message' => 'أُوقفت الجلسة بسبب تجاوز حد المخالفات.'], 423);
         }

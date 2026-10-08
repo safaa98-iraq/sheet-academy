@@ -1,0 +1,31 @@
+
+ Migration name .. Batch / Status 
+ 0001_01_01_000000_create_users_table .. [1] Ran 
+ 0001_01_01_000001_create_cache_table .. [1] Ran 
+ 0001_01_01_000002_create_jobs_table .. [1] Ran 
+ 2026_10_04_182803_create_students_table .. [1] Ran 
+ 2026_10_04_182804_create_student_tokens_table .. [1] Ran 
+ 2026_10_04_182805_create_roles_table .. [1] Ran 
+ 2026_10_04_182806_create_permissions_table .. [1] Ran 
+ 2026_10_04_182807_create_courses_table .. [1] Ran 
+ 2026_10_04_182808_create_lessons_table .. [1] Ran 
+ 2026_10_04_182809_create_student_preferences_table .. [1] Ran 
+ 2026_10_04_182810_create_lesson_progress_table .. [1] Ran 
+ 2026_10_04_182811_create_student_devices_table .. [1] Ran 
+ 2026_10_05_154323_create_curriculum_nodes_table .. [1] Ran 
+ 2026_10_05_154324_add_curriculum_fields_to_lessons_table .. [1] Ran 
+ 2026_10_05_154325_create_lesson_attachments_table .. [1] Ran 
+ 2026_10_05_161046_add_publication_fields_to_courses_table .. [1] Ran 
+ 2026_10_05_162745_create_lesson_videos_table .. [1] Ran 
+ 2026_10_05_162746_create_video_uploads_table .. [1] Ran 
+ 2026_10_05_172045_create_audit_logs_table .. [1] Ran 
+ 2026_10_05_172046_add_audit_and_link_fields_to_student_devices_and_students [1] Ran 
+ 2026_10_05_172047_create_notifications_table .. [1] Ran 
+ 2026_10_05_174215_add_device_limit_to_student_tokens_table .. [1] Ran 
+ 2026_10_05_204251_add_heartbeat_state_to_lesson_progress_table .. [1] Ran 
+ 2026_10_05_204251_create_student_playlists_tables .. [1] Ran 
+ 2026_10_06_175813_create_grade_levels_table .. [1] Ran 
+ 2026_10_07_182626_add_encrypted_token_to_student_tokens_table .. [1] Ran 
+ 2026_10_07_185610_add_grade_level_id_to_students_table .. [1] Ran 
+ 2026_10_08_115013_remove_recoverable_student_tokens .. [2] Ran 
+

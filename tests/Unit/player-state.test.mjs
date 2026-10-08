@@ -1,10 +1,10 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { getProgress, saveProgress } from '../../resources/js/progress-store.js';
+import { getProgress, saveProgress, flushProgress } from '../../resources/js/progress-store.js';
 
 const values = new Map();
 const events = [];
-globalThis.document = { body: { dataset: { storageScope: 'test-student' } }, dispatchEvent: event => events.push(event) };
+globalThis.document = { body: { dataset: { storageScope: 'test-student', preview: 'true' } }, querySelector: () => null, dispatchEvent: event => events.push(event) };
 globalThis.CustomEvent = class { constructor(type, options = {}) { this.type = type; this.detail = options.detail; } };
 const storage = { getItem: key => values.get(key) ?? null, setItem: (key,value) => values.set(key,value) };
 beforeEach(() => { values.clear(); events.length = 0; document.body.dataset.storageScope = `student-${Math.random()}`; globalThis.localStorage = storage; });
@@ -50,4 +50,19 @@ test('corrupted saved data does not break the player', () => {
     assert.equal(getProgress('broken').position,0);
     saveProgress('broken',{position:25,duration:50});
     assert.equal(getProgress('broken').position,25);
+});
+test('page exit sends a Laravel-compatible beacon with the saved position', () => {
+    document.body.dataset.preview = 'false';
+    document.body.dataset.progressUrlTemplate = '/student/progress/LESSON_ID';
+    document.querySelector = () => ({content:'test-csrf'});
+    let submitted;
+    Object.defineProperty(globalThis, 'navigator', {configurable:true, value:{sendBeacon:(url,body)=>{submitted={url,body};return true;}}});
+    flushProgress(42, {position:73,duration:100});
+    assert.equal(submitted.url,'/student/progress/42');
+    assert.equal(submitted.body.get('position_seconds'),'73');
+    assert.equal(submitted.body.get('is_playing'),'0');
+    assert.equal(submitted.body.get('event'),'unloaded');
+    assert.equal(submitted.body.get('_token'),'test-csrf');
+    document.body.dataset.preview = 'true';
+    document.querySelector = () => null;
 });
