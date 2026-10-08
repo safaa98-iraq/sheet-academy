@@ -33,6 +33,12 @@ class UploadLessonAttachmentsRequest extends FormRequest
                     if ($value instanceof UploadedFile && ! in_array($value->getMimeType(), $allowedMimes, true)) {
                         $fail('نوع الملف الحقيقي غير مسموح. ارفع ملف PDF أو صورة معتمدة.');
                     }
+                    if ($value instanceof UploadedFile && str_starts_with((string) $value->getMimeType(), 'image/')) {
+                        $dimensions = @getimagesize($value->getRealPath());
+                        if ($dimensions === false || $dimensions[0] * $dimensions[1] > 25_000_000) {
+                            $fail('الصورة تالفة أو تتجاوز الحد المسموح لأبعاد الصور.');
+                        }
+                    }
                 },
             ],
         ];

@@ -1,0 +1,45 @@
+local preference cannot disable protection; copy prevented: PASS
+cut, paste, drag, context menu and print controls: BLOCKED
+manifest without session: BLOCKED 302
+key without session: BLOCKED 302
+segment without session: BLOCKED 302
+expired signed URL: BLOCKED 403
+altered signature: BLOCKED 403
+cross-origin hotlink: BLOCKED 403
+unassigned student key: BLOCKED 404
+unassigned student manifest: BLOCKED 404
+expired student session: BLOCKED 302
+downloaded encrypted segment without key cannot be played: BLOCKED ffprobe
+segment decryption with invalid key: BLOCKED AES decryption
+authorized session receives a usable decryption key: AES-HLS is not DRM: CONFIRMED limitation
+state change without CSRF token: BLOCKED 419
+normal playback readable server identifier: PASS
+fullscreen retains watermark: PASS
+fullscreen fallback keeps watermark when native API is unavailable: PASS
+quality change preserves playback and watermark: PASS
+mobile RTL layout and watermark: PASS
+server resume survives a new view with saved quality and watermark: PASS; old link 404
+start from beginning resets the saved playback position: PASS
+lesson playlist button persists to account: PASS
+real PDF rendered by Poppler into private watermarked PNG: PASS
+document fullscreen watermark: PASS
+document image requires session: BLOCKED 302
+document watermark hiding removes content and records violation: BLOCKED
+watermark remove: BLOCKED playback + server link 404
+watermark display: BLOCKED playback + server link 404
+watermark opacity: BLOCKED playback + server link 404
+watermark text: BLOCKED playback + server link 404
+watermark ancestor: BLOCKED playback + server link 404
+watermark cover: BLOCKED playback + server link 404
+watermark stylesheet: BLOCKED playback + server link 404
+DevTools shortcut stops playback: BLOCKED
+tamper and DevTools recorded on server: PASS
+PWA cache excludes content, keys, playlists and segments: PASS
+orange/black theme persists after reload: PASS
+orange/white theme: PASS
+offline navigation serves only the offline page: PASS
+revoked device stops buffered playback at the next progress heartbeat: PASS within 16 seconds
+second device login ends first session: BLOCKED first session
+server resume is available to the new device: PASS
+HTML and JSON responses contain no original video/PDF URLs: 0 source links
+browser JavaScript errors: 0

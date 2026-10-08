@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\LessonAttachment;
+use App\Models\Student;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -10,6 +11,37 @@ use RuntimeException;
 
 class StudentDocumentPageService
 {
+    public function watermarkedPage(LessonAttachment $attachment, int $page, Student $student): string
+    {
+        $path = $this->pagePath($attachment, $page);
+        $source = Storage::disk('private')->path($path);
+        $dimensions = @getimagesize($source);
+        abort_unless($dimensions !== false && $dimensions[0] * $dimensions[1] <= 25_000_000, 422, 'حجم أبعاد الصورة غير مدعوم.');
+        $image = @imagecreatefromstring(Storage::disk('private')->get($path));
+        abort_unless($image !== false, 422, 'تعذّر قراءة الصورة.');
+        $scale = min(1, 1600 / imagesx($image), 1600 / imagesy($image));
+        $contentWidth = max(1, (int) round(imagesx($image) * $scale));
+        $width = max(400, $contentWidth);
+        $scaledHeight = max(1, (int) round(imagesy($image) * $scale));
+        $height = max(120, $scaledHeight);
+        $canvas = imagecreatetruecolor($width, $height);
+        imagefill($canvas, 0, 0, imagecolorallocate($canvas, 255, 255, 255));
+        imagecopyresampled($canvas, $image, (int) (($width - $contentWidth) / 2), 0, 0, 0, $contentWidth, $scaledHeight, imagesx($image), imagesy($image));
+        $identifier = strtoupper(substr(hash_hmac('sha256', 'watermark:'.$student->id, (string) config('app.key')), 0, 16));
+        $text = '#'.$student->id.' / '.$identifier;
+        $ink = imagecolorallocatealpha($canvas, 80, 80, 80, 58);
+        foreach ([0.25, 0.55, 0.85] as $fraction) {
+            imagestring($canvas, 5, (int) ($width * 0.08), max(0, (int) ($height * $fraction) - 8), $text, $ink);
+        }
+        ob_start();
+        imagepng($canvas);
+        $bytes = (string) ob_get_clean();
+        imagedestroy($image);
+        imagedestroy($canvas);
+
+        return $bytes;
+    }
+
     /** @return array<int, array{number: int, url: string}> */
     public function pages(LessonAttachment $attachment, string $viewLink): array
     {

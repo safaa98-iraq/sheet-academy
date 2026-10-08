@@ -1,3 +1,4 @@
+import { guardWatermark, toggleProtectedFullscreen } from './watermark-guard';
 import { flushProgress, getProgress, saveProgress, storageScope } from './progress-store';
 
 export const formatTime = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
@@ -25,6 +26,7 @@ function createQualityAdapter(player, onPreferenceChange) {
     if (!options.includes(preference)) preference = 'auto';
     let effectiveHeight = 720;
     let hls = null;
+    let nativeSwitch = null;
     const button = player.querySelector('[data-quality-toggle]');
     const menu = player.querySelector('[data-quality-options]');
 
@@ -39,7 +41,7 @@ function createQualityAdapter(player, onPreferenceChange) {
         player.dataset.quality = preference;
     };
     const apply = () => {
-        if (!hls) return;
+        if (!hls) { nativeSwitch?.(preference); return; }
         if (preference === 'auto') {
             hls.currentLevel = -1;
             return;
@@ -76,6 +78,7 @@ function createQualityAdapter(player, onPreferenceChange) {
     render();
 
     return {
+        attachNative(callback) { nativeSwitch = callback; apply(); },
         attachHls(instance) {
             if (!instance || !Array.isArray(instance.levels)) return;
             hls = instance;
@@ -106,7 +109,8 @@ function initializePlayer(player) {
     let watchStarted = false;
     const saved = getProgress(lessonId);
     const settings = window.ACADEMY_SETTINGS || {};
-    player.querySelector('[data-player-watermark]').hidden = settings.watermark === false;
+    player.querySelector('[data-player-watermark]').hidden = false;
+    let securityStopped = false;
     let position = Math.min(duration, saved.updatedAt ? saved.position : Math.max(0, Number(player.dataset.initialPosition) || 0));
     if (settings.resume === false) position = 0;
     let watched = Math.min(duration, saved.updatedAt ? saved.watched : 0);
@@ -135,16 +139,18 @@ function initializePlayer(player) {
         if (!media || !player.dataset.streamSessionUrl) return;
         const response = await fetch(player.dataset.streamSessionUrl, {credentials: 'same-origin', headers: {'Accept': 'application/json'}});
         if (!response.ok) throw new Error('stream-session-expired');
-        const {manifest_url: manifestUrl} = await response.json();
+        const {manifest_url: manifestUrl, rendition_urls: renditions = {}} = await response.json();
         const savedPosition = media.currentTime || position;
         const {default: Hls} = await import('hls.js/light');
         if (Hls.isSupported()) {
             if (hls) hls.destroy();
-            hls = new Hls({enableWorker: true, xhrSetup: (xhr) => { xhr.withCredentials = true; }});
+            hls = new Hls({enableWorker: true, startPosition: savedPosition, xhrSetup: (xhr) => { xhr.withCredentials = true; }});
+            media.addEventListener('loadedmetadata', () => {
+                if (savedPosition > 0) media.currentTime = savedPosition;
+                if (restorePlayback && !securityStopped) media.play().catch(() => {});
+            }, {once: true});
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 qualityAdapter.attachHls(hls);
-                if (savedPosition > 0) media.currentTime = savedPosition;
-                if (restorePlayback) media.play().catch(() => {});
             });
             hls.on(Hls.Events.LEVEL_SWITCHED, (_, data) => qualityAdapter.setEffectiveQuality(hls.levels[data.level]?.height));
             hls.on(Hls.Events.ERROR, (_, data) => {
@@ -155,11 +161,17 @@ function initializePlayer(player) {
             return;
         }
         if (media.canPlayType('application/vnd.apple.mpegurl')) {
-            media.src = manifestUrl;
-            media.addEventListener('loadedmetadata', () => {
-                if (savedPosition > 0) media.currentTime = savedPosition;
-                if (restorePlayback) media.play().catch(() => {});
-            }, {once: true});
+            qualityAdapter.attachNative(preference => {
+                const restorePosition = media.currentTime || savedPosition;
+                const keepPlaying = !media.paused || restorePlayback;
+                media.src = preference === 'auto' ? manifestUrl : (renditions[preference] || manifestUrl);
+                media.addEventListener('loadedmetadata', () => {
+                    if (restorePosition > 0) media.currentTime = restorePosition;
+                    qualityAdapter.setEffectiveQuality(media.videoHeight);
+                    if (keepPlaying && !securityStopped) media.play().catch(() => {});
+                }, {once: true});
+            });
+            media.addEventListener('resize', () => qualityAdapter.setEffectiveQuality(media.videoHeight));
             return;
         }
         announce('تشغيل الفيديو غير مدعوم في هذا المتصفح.');
@@ -205,6 +217,7 @@ function initializePlayer(player) {
         render();
     };
     const togglePlayback = () => {
+        if (securityStopped) return;
         if (media) {
             if (media.paused) media.play().catch(() => announce('تعذّر تشغيل الفيديو.'));
             else media.pause();
@@ -235,9 +248,7 @@ function initializePlayer(player) {
     };
     const toggleFullscreen = async () => {
         try {
-            if (document.fullscreenElement) await document.exitFullscreen();
-            else if (player.requestFullscreen) await player.requestFullscreen();
-            else announce('ملء الشاشة غير متاح في هذا المتصفح.');
+            await toggleProtectedFullscreen(player);
         } catch {
             announce('تعذر فتح ملء الشاشة. جرّب من زر المشغّل.');
         }
@@ -271,7 +282,7 @@ function initializePlayer(player) {
     player.querySelector('[data-restart]').addEventListener('click', () => { seekTo(0); resume.hidden = true; persist('seeked'); });
     player.querySelector('[data-resume-dismiss]').addEventListener('click', () => { resume.hidden = true; });
     page?.querySelector('[data-complete-lesson]')?.addEventListener('click', () => {
-        announce('يُحتسب إكمال الدرس بعد مشاهدة ٩٠٪ من مدته.');
+        announce(`يُحتسب إكمال الدرس بعد مشاهدة ${document.body.dataset.completionThreshold || 90}٪ من مدته.`);
     });
     page?.querySelectorAll('[data-seek-to]').forEach((button) => button.addEventListener('click', () => seekTo(button.dataset.seekTo)));
     player.addEventListener('keydown', (event) => {
@@ -294,6 +305,7 @@ function initializePlayer(player) {
             render();
         });
         media.addEventListener('play', () => {
+            if (securityStopped) { media.pause(); return; }
             playing = true;
             lastTick = performance.now();
             resume.hidden = true;
@@ -325,48 +337,33 @@ function initializePlayer(player) {
     }, Math.max(10, Number(document.body.dataset.progressHeartbeat || 12)) * 1000);
     const stage = player.querySelector('[data-player-stage]');
     const watermarkText = player.dataset.preview === 'true' ? 'معاينة تعليمية' : (document.body.dataset.studentWatermark || 'محتوى تعليمي مرخّص');
-    const reportTamper = () => {
-        if (media && !media.paused) media.pause();
+    const stopProtectedPlayback = () => {
+        securityStopped = true;
         pause();
-        announce('توقّف العرض بعد رصد محاولة إخفاء بصمة المحتوى.');
+        hls?.destroy();
+        hls = null;
+        if (streamRenewalTimer) clearInterval(streamRenewalTimer);
+        if (media) { media.removeAttribute('src'); media.load(); }
+    };
+    const reportTamper = () => {
+        stopProtectedPlayback();
+        announce('توقّف العرض بعد رصد محاولة إخفاء بصمة المحتوى. افتح الدرس مجدداً.');
         document.dispatchEvent(new CustomEvent('protection:watermark-tamper', {detail: {lessonId}}));
     };
-    const ensureWatermark = () => {
-        let watermark = player.querySelector('[data-player-watermark]');
-        let changed = false;
-        if (!watermark) {
-            watermark = document.createElement('span');
-            watermark.className = 'player-watermark';
-            watermark.dataset.playerWatermark = '';
-            watermark.setAttribute('aria-hidden', 'true');
-            watermark.textContent = watermarkText;
-            stage?.append(watermark);
-            changed = true;
-        }
-        if (watermark.textContent !== watermarkText) watermark.textContent = watermarkText;
-        const style = getComputedStyle(watermark);
-        const bounds = watermark.getBoundingClientRect();
-        if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) < 0.12 || bounds.width < 30 || bounds.height < 8) {
-            watermark.style.removeProperty('display');
-            watermark.style.removeProperty('visibility');
-            watermark.style.opacity = '.48';
-            changed = true;
-        }
-        if (changed) reportTamper();
-    };
-    ensureWatermark();
-    watermarkObserver = new MutationObserver(() => ensureWatermark());
-    if (stage) watermarkObserver.observe(stage, {subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden']});
+    if (player.dataset.preview !== 'true' && stage) guardWatermark({container: stage, selector: '[data-player-watermark]', text: watermarkText, onTamper: reportTamper});
+    media?.addEventListener('webkitbeginfullscreen', () => { stopProtectedPlayback(); announce('استخدم ملء الشاشة الخاص بالمشغّل لإبقاء بصمتك ظاهرة.'); });
     window.setInterval(() => {
         const watermark = player.querySelector('[data-player-watermark]');
         if (!watermark) return;
-        watermark.style.insetInlineStart = `${8 + Math.random() * 48}%`;
-        watermark.style.top = `${10 + Math.random() * 58}%`;
+        const horizontal = Math.max(0, 92 - watermark.offsetWidth / stage.clientWidth * 100);
+        const vertical = Math.max(0, 82 - watermark.offsetHeight / stage.clientHeight * 100);
+        watermark.style.insetInlineStart = `${4 + Math.random() * horizontal}%`;
+        watermark.style.top = `${8 + Math.random() * vertical}%`;
     }, 10000);
     auditHeartbeatTimer = window.setInterval(() => {
         if (playing && window.reportStudentActivity) window.reportStudentActivity('watch_heartbeat', lessonId);
     }, 60000);
-    document.addEventListener('student:session-ended', pause);
+    document.addEventListener('student:session-ended', stopProtectedPlayback);
     window.addEventListener('pagehide', () => {
         if (hls) hls.destroy();
         if (streamRenewalTimer) clearInterval(streamRenewalTimer);
@@ -415,6 +412,11 @@ function initializeLessonPage(page, player) {
         });
         const percentage = lessons.length ? Math.round(completeCount / lessons.length * 100) : 0;
         page.querySelector('[data-curriculum-completed]').textContent = String(completeCount);
+        page.querySelectorAll('[data-curriculum-group]').forEach(group => {
+            const links = [...group.querySelectorAll('[data-curriculum-lesson]')];
+            const completed = links.filter(link => getProgress(link.dataset.curriculumLesson).completed).length;
+            group.querySelector('[data-curriculum-group-percent]').textContent = String(links.length ? Math.round(completed / links.length * 100) : 0);
+        });
         page.querySelector('[data-curriculum-bar]').style.width = `${percentage}%`;
         page.querySelector('[data-lesson-percent]').textContent = `${percentage}%`;
         page.querySelector('[data-lesson-progress-ring]').style.setProperty('--percentage', `${percentage}%`);
@@ -485,12 +487,31 @@ function initializeLessonPage(page, player) {
     const storedPlaylist = readPreference(playlistKey, []);
     let playlist = Array.isArray(storedPlaylist) ? storedPlaylist.filter((item) => item && typeof item === 'object' && item.id != null) : [];
     const playlistButton = page.querySelector('[data-player-playlist]');
+    let serverPlaylistItem = lesson.playlist_item_id || null;
+    const studentPlaylist = document.body.dataset.preview !== 'true' && Boolean(document.body.dataset.studentActivityUrl);
     const renderPlaylist = () => {
-        const added = playlist.some((item) => String(item.id) === String(lesson.id));
+        const added = studentPlaylist ? Boolean(serverPlaylistItem) : playlist.some((item) => String(item.id) === String(lesson.id));
         playlistButton.setAttribute('aria-pressed', String(added));
         playlistButton.querySelector('[data-playlist-label]').textContent = added ? 'في قائمة التشغيل' : 'قائمة التشغيل';
     };
-    playlistButton.addEventListener('click', () => {
+    playlistButton.addEventListener('click', async () => {
+        if (studentPlaylist) {
+            playlistButton.disabled = true;
+            try {
+                const response = await fetch(serverPlaylistItem ? `/student/playlists/items/${serverPlaylistItem}` : '/student/playlists/items', {
+                    method: serverPlaylistItem ? 'DELETE' : 'POST', credentials: 'same-origin',
+                    headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content},
+                    body: JSON.stringify({lesson_id: Number(lesson.id)}),
+                });
+                if (!response.ok) throw new Error('تعذّر تحديث قائمة التشغيل.');
+                const result = await response.json();
+                serverPlaylistItem = result.item_id || null;
+                renderPlaylist();
+                toast(serverPlaylistItem ? 'أُضيف الدرس إلى قائمتك في الحساب' : 'أُزيل الدرس من القائمة');
+            } catch (error) {toast(error.message);}
+            finally {playlistButton.disabled = false;}
+            return;
+        }
         const exists = playlist.some((item) => String(item.id) === String(lesson.id));
         playlist = exists ? playlist.filter((item) => String(item.id) !== String(lesson.id)) : [...playlist, lesson];
         writePreference(playlistKey, playlist);

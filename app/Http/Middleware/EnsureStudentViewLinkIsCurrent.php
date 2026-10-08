@@ -23,7 +23,7 @@ class EnsureStudentViewLinkIsCurrent
         $device = StudentDevice::query()->whereKey($request->session()->get('student_device_id'))
             ->where('student_id', $student?->id)->whereNull('revoked_at')->first();
         $viewLink = $request->query('view');
-        if ($device === null || ! is_string($viewLink) || strlen($viewLink) !== 64
+        if ($device === null || ! is_string($viewLink) || strlen($viewLink) < 100 || strlen($viewLink) > 1024
             || ! hash_equals((string) $device->view_link_hash, hash('sha256', $viewLink))) {
             $this->audit->record($student, 'stale_view_link', $request, ['path' => $request->path()], $device);
 

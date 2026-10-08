@@ -32,9 +32,9 @@ class ProfessorStudentManagementTest extends TestCase
         $this->post(route('admin.students.token', $student))->assertSessionHasErrors('token');
         $this->assertDatabaseCount('student_tokens', 1);
         $this->patch(route('admin.students.status', $student), ['status' => 'active'])->assertSessionHasNoErrors();
-        $this->post(route('admin.students.token', $student), ['device_limit' => 3, 'expires_at' => now()->addMonth()->format('Y-m-d H:i:s')])->assertRedirect(route('admin.students.index'))->assertSessionHas('issued_student_token');
+        $this->post(route('admin.students.token', $student), ['device_limit' => 1, 'expires_at' => now()->addMonth()->format('Y-m-d H:i:s')])->assertRedirect(route('admin.students.index'))->assertSessionHas('issued_student_token');
         $token = $student->tokens()->latest('id')->firstOrFail();
-        $this->assertSame(3, $token->device_limit);
+        $this->assertSame(1, $token->device_limit);
         $this->assertSame(now()->addMonth()->format('Y-m-d H:i:s'), $token->expires_at->format('Y-m-d H:i:s'));
         $this->assertSame('revoked', $old['record']->fresh()->status);
         $this->delete(route('admin.students.destroy', $student))->assertRedirect(route('admin.students.index'));

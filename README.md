@@ -4,7 +4,7 @@
 
 ## التشغيل المحلي
 
-المتطلبات: PHP 8.3 أو أحدث، Composer، MySQL 8 أو MariaDB، وامتداد `pdo_mysql`.
+المتطلبات: PHP 8.4.1 أو أحدث وفق `composer.lock`، Composer، MySQL 8 أو MariaDB، وامتدادات `pdo_mysql` وGD وmbstring وXML. يلزم Node.js وRedis وFFmpeg/ffprobe وPoppler لتحويل الفيديو والملازم.
 
 1. انسخ `.env.example` إلى `.env` واضبط اتصال MySQL، وعيّن قيمة خاصة طويلة في `SUPERADMIN_PASSWORD` (12 حرفاً على الأقل).
 2. أنشئ قاعدة البيانات:
