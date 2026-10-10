@@ -18,7 +18,7 @@
 <body class="admin-body" data-storage-scope="instructor">
     <button class="admin-backdrop" data-admin-nav-close aria-label="إغلاق القائمة" hidden></button>
     <aside class="instructor-sidebar" id="instructor-sidebar" aria-label="قائمة الأستاذ">
-        <a class="instructor-brand" href="{{ route('admin.dashboard') }}"><span class="instructor-brand-mark"><x-icon name="book" /></span><span>عيادة التعلّم<small>LEARNING CLINIC</small></span></a>
+        <a class="instructor-brand" href="{{ route('admin.dashboard') }}"><span class="instructor-brand-mark"><x-icon name="tooth" /></span><span>عيادة التعلّم<small>منصة تعليم طب الأسنان</small></span></a>
         <div class="instructor-space"><span>مساحة الأستاذ</span><span class="badge">{{ $isPreview ? 'معاينة' : 'إدارة' }}</span></div>
         <nav class="instructor-nav">
             @foreach($navigation as [$key, $label, $icon, $routeName, $permission])
@@ -38,7 +38,7 @@
                 @unless($isPreview)
                     @can('audit.view')<a class="icon-btn audit-alert-link" href="{{ route('admin.activity') }}" aria-label="تنبيهات النشاط"><x-icon name="bell"/><span data-audit-alert-count hidden>0</span></a>@endcan
                 @endunless
-                <span class="admin-topbar-divider"></span><span class="admin-avatar">أع</span><div class="instructor-profile"><b>{{ $adminName }}</b><small>أستاذ طب الأسنان</small></div>
+                <span class="admin-topbar-divider"></span><span class="admin-avatar">{{ mb_substr($adminName, 0, 1) }}</span><div class="instructor-profile"><b>{{ $adminName }}</b><small>أستاذ طب الأسنان</small></div>
                 @unless($isPreview)<form method="post" action="{{ route('admin.logout') }}">@csrf<button class="icon-btn" title="تسجيل الخروج" aria-label="تسجيل الخروج"><x-icon name="logout" /></button></form>@endunless
             </div>
         </header>
