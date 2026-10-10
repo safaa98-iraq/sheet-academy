@@ -24,12 +24,14 @@ FROM php-base AS verified-app
 ENV COMPOSER_ALLOW_SUPERUSER=1
 COPY . .
 COPY --from=frontend /build/public/build ./public/build
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader \
+RUN touch .env \
+    && composer install --no-interaction --prefer-dist --optimize-autoloader \
     && npm ci --omit=dev --ignore-scripts --prefix video-worker \
     && APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= php artisan test --compact --display-warnings --fail-on-warning \
     && node --test tests/Unit/*.test.mjs \
     && vendor/bin/pint --format agent config/trustedproxy.php railway-import.php \
     && composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader \
+    && rm -f .env \
     && rm -rf tests .claude .codex .github electron docs
 
 FROM php-base AS production
