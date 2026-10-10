@@ -7,13 +7,12 @@ COPY public ./public
 COPY vite.config.js ./
 RUN npm run build
 
-FROM php:8.4-apache-bookworm AS php-base
+FROM php:8.4-fpm-bookworm AS php-base
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg poppler-utils supervisor libicu-dev libzip-dev libpng-dev libjpeg62-turbo-dev \
+    nginx ffmpeg poppler-utils supervisor libicu-dev libzip-dev libpng-dev libjpeg62-turbo-dev \
     libfreetype6-dev libonig-dev libxml2-dev libsqlite3-dev ca-certificates \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j2 pdo_mysql pdo_sqlite intl zip gd bcmath pcntl mbstring \
-    && a2enmod rewrite headers \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=node:22-bookworm-slim /usr/local/bin/node /usr/local/bin/node
 COPY --from=node:22-bookworm-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
@@ -35,11 +34,11 @@ RUN composer install --no-interaction --prefer-dist --optimize-autoloader \
 
 FROM php-base AS production
 COPY --from=verified-app /var/www/html /var/www/html
-COPY railway-apache.conf /etc/apache2/sites-available/000-default.conf
+COPY railway-nginx.conf /etc/nginx/nginx.conf
 COPY railway-supervisor.conf /etc/supervisor/conf.d/academy.conf
 COPY railway-php.ini /usr/local/etc/php/conf.d/academy.ini
-RUN a2dismod mpm_event mpm_worker && a2enmod mpm_prefork \
-    && apache2ctl -t \
+RUN printf "[www]\nlisten = 127.0.0.1:9000\nclear_env = no\n" > /usr/local/etc/php-fpm.d/zz-academy.conf \
+    && nginx -t && php-fpm -t \
     && chmod +x railway-start.sh && chown -R www-data:www-data storage bootstrap/cache
 EXPOSE 80
 ENTRYPOINT ["/var/www/html/railway-start.sh"]
