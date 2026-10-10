@@ -38,6 +38,8 @@ COPY --from=verified-app /var/www/html /var/www/html
 COPY railway-apache.conf /etc/apache2/sites-available/000-default.conf
 COPY railway-supervisor.conf /etc/supervisor/conf.d/academy.conf
 COPY railway-php.ini /usr/local/etc/php/conf.d/academy.ini
-RUN chmod +x railway-start.sh && chown -R www-data:www-data storage bootstrap/cache
+RUN a2dismod mpm_event mpm_worker && a2enmod mpm_prefork \
+    && apache2ctl -t \
+    && chmod +x railway-start.sh && chown -R www-data:www-data storage bootstrap/cache
 EXPOSE 80
 ENTRYPOINT ["/var/www/html/railway-start.sh"]

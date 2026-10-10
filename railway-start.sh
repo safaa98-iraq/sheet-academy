@@ -13,4 +13,4 @@ php artisan route:cache --no-interaction
 php artisan view:cache --no-interaction
 chown -R www-data:www-data storage bootstrap/cache
 chmod 750 storage/app/private
-exec /usr/bin/supervisord -c /etc/supervisor/supervisord.conf
+exec /usr/bin/supervisord -c /etc/supervisor/conf.d/academy.conf
