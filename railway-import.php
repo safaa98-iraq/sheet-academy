@@ -1,7 +1,10 @@
 <?php
 
 /** Import an explicitly supplied deployment backup only into an empty database. */
-$payload = getenv('DEPLOY_DATABASE_DUMP_GZIP_BASE64');
+$payload = implode('', array_map(
+    static fn (int $part): string => (string) getenv('DEPLOY_DATABASE_DUMP_PART_'.$part),
+    range(1, 4),
+));
 if ($payload === false || $payload === '') {
     exit(0);
 }

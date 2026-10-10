@@ -5,7 +5,7 @@ cd /var/www/html
 : "${VIDEO_WORKER_TOKEN:?VIDEO_WORKER_TOKEN is required}"
 mkdir -p storage/app/private storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 php railway-import.php
-unset DEPLOY_DATABASE_DUMP_GZIP_BASE64 DEPLOY_DATABASE_DUMP_SHA256
+unset DEPLOY_DATABASE_DUMP_PART_1 DEPLOY_DATABASE_DUMP_PART_2 DEPLOY_DATABASE_DUMP_PART_3 DEPLOY_DATABASE_DUMP_PART_4 DEPLOY_DATABASE_DUMP_SHA256
 php artisan config:clear --no-interaction
 php artisan migrate --force --no-interaction
 php artisan config:cache --no-interaction
