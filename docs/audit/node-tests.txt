@@ -1,0 +1,17 @@
+✔ progress survives a reload and keeps separate lesson positions (2.19111ms)
+✔ accounts cannot see each other’s local progress (0.372833ms)
+✔ positions are finite and clamped to the lesson duration (0.368327ms)
+✔ partial updates preserve completion and report a progress event (0.35043ms)
+✔ blocked storage retains progress for the current visit (0.677533ms)
+✔ corrupted saved data does not break the player (0.394776ms)
+✔ page exit sends a Laravel-compatible beacon with the saved position (0.524633ms)
+✔ a revoked session stops buffered playback on the next progress response (7.833773ms)
+✔ FFprobe refuses network media references and storage traversal (83.024309ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 179.989775

@@ -1,8 +1,9 @@
 const PREFERENCE_KEY = 'dental-content-protection';
-const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [data-protection-exempt]';
+const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
 let initialized = false;
 let enabled = true;
-let lastNoticeAt = 0;
+const lastNoticeAt = new Map();
+const mandatory = () => document.body.dataset.preview !== 'true' && Boolean(document.body.dataset.studentActivityUrl);
 
 const readPreference = () => {
     try {
@@ -13,17 +14,17 @@ const readPreference = () => {
     }
 };
 
-const isActive = () => enabled && document.body.dataset.protected === 'true';
+const isActive = () => mandatory() || (enabled && document.body.dataset.protected === 'true');
 
 const isExempt = (target) => target instanceof Element
     && (target.closest(EDITABLE_SELECTOR) || target.isContentEditable);
 
 const notifyBlocked = (action) => {
     const now = Date.now();
-    if (now - lastNoticeAt < 3500) {
+    if (now - (lastNoticeAt.get(action) || 0) < 3500) {
         return;
     }
-    lastNoticeAt = now;
+    lastNoticeAt.set(action, now);
     document.dispatchEvent(new CustomEvent('protection:blocked', { detail: { action } }));
 };
 
@@ -42,7 +43,7 @@ const updateControls = () => {
 };
 
 export const setProtection = (value) => {
-    enabled = Boolean(value);
+    enabled = mandatory() || Boolean(value);
     try {
         localStorage.setItem(PREFERENCE_KEY, JSON.stringify(enabled));
     } catch {
@@ -57,15 +58,14 @@ export const initProtection = () => {
         return;
     }
     initialized = true;
-    enabled = readPreference();
+    enabled = mandatory() || readPreference();
 
     const styles = document.createElement('style');
     styles.dataset.protectionStyles = '';
     styles.textContent = `
         body.content-protected { -webkit-user-select: none; user-select: none; }
         body.content-protected input, body.content-protected textarea,
-        body.content-protected select, body.content-protected [contenteditable],
-        body.content-protected [data-protection-exempt], body.content-protected [data-protection-exempt] * {
+        body.content-protected select, body.content-protected [contenteditable]:not([contenteditable="false"]) {
             -webkit-user-select: text; user-select: text;
         }
         body.content-protected img { -webkit-user-drag: none; }
@@ -80,7 +80,7 @@ export const initProtection = () => {
                 return;
             }
             if (eventName === 'dragstart' && event.target instanceof Element
-                && event.target.closest('[data-sortable], [data-drag-handle], .drag-handle')) {
+                && !mandatory() && event.target.closest('[data-sortable], [data-drag-handle], .drag-handle')) {
                 return;
             }
 
@@ -101,7 +101,7 @@ export const initProtection = () => {
         if (key === 'f12' || (isCommand && ['s', 'p', 'u', 'c', 'x'].includes(key))
             || (isCommand && event.shiftKey && ['i', 'j'].includes(key))) {
             event.preventDefault();
-            notifyBlocked('shortcut');
+            notifyBlocked(key === 'f12' || (event.shiftKey && ['i', 'j'].includes(key)) ? 'devtools' : key === 'p' ? 'print' : 'shortcut');
         }
     });
 
@@ -128,7 +128,7 @@ export const initProtection = () => {
 
     window.addEventListener('storage', (event) => {
         if (event.key === PREFERENCE_KEY) {
-            enabled = readPreference();
+            enabled = mandatory() || readPreference();
             updateControls();
         }
     });
@@ -148,4 +148,10 @@ export const initProtection = () => {
     };
     window.setInterval(inspectWindow, 2000);
     window.addEventListener('resize', inspectWindow);
+    document.addEventListener('protection:blocked', event => {
+        if (event.detail?.action === 'devtools') document.dispatchEvent(new CustomEvent('student:session-ended'));
+    });
+    document.addEventListener('protection:devtools', event => {
+        if (event.detail?.suspected) document.dispatchEvent(new CustomEvent('student:session-ended'));
+    });
 };

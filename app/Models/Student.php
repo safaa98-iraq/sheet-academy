@@ -10,13 +10,31 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 
 class Student extends Authenticatable
 {
     /** @use HasFactory<StudentFactory> */
     use HasFactory;
 
-    protected $fillable = ['name', 'email', 'status', 'created_by', 'grade_level_id'];
+    use Notifiable;
+
+    protected $fillable = ['name', 'email', 'status', 'created_by', 'grade_level_id', 'college', 'phone', 'study_grade_level_id', 'subscription_expires_at'];
+
+    protected function casts(): array
+    {
+        return ['subscription_expires_at' => 'datetime'];
+    }
+
+    public function subscriptionIsActive(): bool
+    {
+        return $this->subscription_expires_at === null || $this->subscription_expires_at->isFuture();
+    }
+
+    public function studyGradeLevel(): BelongsTo
+    {
+        return $this->belongsTo(GradeLevel::class, 'study_grade_level_id');
+    }
 
     public function createdBy(): BelongsTo
     {

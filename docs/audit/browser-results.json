@@ -1,0 +1,185 @@
+{
+  "results": [
+    {
+      "name": "local preference cannot disable protection; copy prevented",
+      "result": "PASS"
+    },
+    {
+      "name": "cut, paste, drag, context menu and print controls",
+      "result": "BLOCKED"
+    },
+    {
+      "name": "manifest without session",
+      "result": "BLOCKED 302"
+    },
+    {
+      "name": "key without session",
+      "result": "BLOCKED 302"
+    },
+    {
+      "name": "segment without session",
+      "result": "BLOCKED 302"
+    },
+    {
+      "name": "expired signed URL",
+      "result": "BLOCKED 403"
+    },
+    {
+      "name": "altered signature",
+      "result": "BLOCKED 403"
+    },
+    {
+      "name": "cross-origin hotlink",
+      "result": "BLOCKED 403"
+    },
+    {
+      "name": "unassigned student key",
+      "result": "BLOCKED 404"
+    },
+    {
+      "name": "unassigned student manifest",
+      "result": "BLOCKED 404"
+    },
+    {
+      "name": "expired student session",
+      "result": "BLOCKED 302"
+    },
+    {
+      "name": "downloaded encrypted segment without key cannot be played",
+      "result": "BLOCKED ffprobe"
+    },
+    {
+      "name": "segment decryption with invalid key",
+      "result": "BLOCKED AES decryption"
+    },
+    {
+      "name": "authorized session receives a usable decryption key: AES-HLS is not DRM",
+      "result": "CONFIRMED limitation"
+    },
+    {
+      "name": "state change without CSRF token",
+      "result": "BLOCKED 419"
+    },
+    {
+      "name": "normal playback readable server identifier",
+      "result": "PASS"
+    },
+    {
+      "name": "fullscreen retains watermark",
+      "result": "PASS"
+    },
+    {
+      "name": "fullscreen fallback keeps watermark when native API is unavailable",
+      "result": "PASS"
+    },
+    {
+      "name": "quality change preserves playback and watermark",
+      "result": "PASS"
+    },
+    {
+      "name": "mobile RTL layout and watermark",
+      "result": "PASS"
+    },
+    {
+      "name": "server resume survives a new view with saved quality and watermark",
+      "result": "PASS; old link 404"
+    },
+    {
+      "name": "start from beginning resets the saved playback position",
+      "result": "PASS"
+    },
+    {
+      "name": "lesson playlist button persists to account",
+      "result": "PASS"
+    },
+    {
+      "name": "real PDF rendered by Poppler into private watermarked PNG",
+      "result": "PASS"
+    },
+    {
+      "name": "document fullscreen watermark",
+      "result": "PASS"
+    },
+    {
+      "name": "document image requires session",
+      "result": "BLOCKED 302"
+    },
+    {
+      "name": "document watermark hiding removes content and records violation",
+      "result": "BLOCKED"
+    },
+    {
+      "name": "watermark remove",
+      "result": "BLOCKED playback + server link 404"
+    },
+    {
+      "name": "watermark display",
+      "result": "BLOCKED playback + server link 404"
+    },
+    {
+      "name": "watermark opacity",
+      "result": "BLOCKED playback + server link 404"
+    },
+    {
+      "name": "watermark text",
+      "result": "BLOCKED playback + server link 404"
+    },
+    {
+      "name": "watermark ancestor",
+      "result": "BLOCKED playback + server link 404"
+    },
+    {
+      "name": "watermark cover",
+      "result": "BLOCKED playback + server link 404"
+    },
+    {
+      "name": "watermark stylesheet",
+      "result": "BLOCKED playback + server link 404"
+    },
+    {
+      "name": "DevTools shortcut stops playback",
+      "result": "BLOCKED"
+    },
+    {
+      "name": "tamper and DevTools recorded on server",
+      "result": "PASS"
+    },
+    {
+      "name": "PWA cache excludes content, keys, playlists and segments",
+      "result": "PASS"
+    },
+    {
+      "name": "orange/black theme persists after reload",
+      "result": "PASS"
+    },
+    {
+      "name": "orange/white theme",
+      "result": "PASS"
+    },
+    {
+      "name": "offline navigation serves only the offline page",
+      "result": "PASS"
+    },
+    {
+      "name": "revoked device stops buffered playback at the next progress heartbeat",
+      "result": "PASS within 16 seconds"
+    },
+    {
+      "name": "second device login ends first session",
+      "result": "BLOCKED first session"
+    },
+    {
+      "name": "server resume is available to the new device",
+      "result": "PASS"
+    },
+    {
+      "name": "HTML and JSON responses contain no original video/PDF URLs",
+      "result": "0 source links"
+    },
+    {
+      "name": "browser JavaScript errors",
+      "result": "0"
+    }
+  ],
+  "errors": []
+}

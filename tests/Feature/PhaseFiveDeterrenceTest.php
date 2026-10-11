@@ -87,7 +87,9 @@ class PhaseFiveDeterrenceTest extends TestCase
             }
 
             $prefix = $process->command[array_key_last($process->command)];
-            file_put_contents($prefix.'-1.png', 'private-rendered-page');
+            $image = imagecreatetruecolor(300, 400);
+            imagepng($image, $prefix.'-1.png');
+            imagedestroy($image);
 
             return '';
         });

@@ -17,7 +17,7 @@ class StudentActivityController extends Controller
         $data = $request->validate([
             'event' => ['required', 'string', 'in:watch_started,watch_heartbeat,suspicious_devtools,suspicious_copy,suspicious_print,suspicious_watermark'],
             'lesson_id' => ['nullable', 'integer', 'min:1'],
-            'view' => ['nullable', 'string', 'size:64', 'regex:/\A[a-f0-9]{64}\z/'],
+            'view' => ['nullable', 'string', 'min:100', 'max:1024', 'regex:/\A[A-Za-z0-9+\/=]+\z/'],
         ], ['event.in' => 'نوع النشاط غير مدعوم.']);
         $student = $request->user('student');
         $device = StudentDevice::query()->whereKey($request->session()->get('student_device_id'))
@@ -33,6 +33,10 @@ class StudentActivityController extends Controller
             abort_unless(Gate::forUser($student)->allows('viewByStudent', $lesson), 404);
         }
         $audit->record($student, $data['event'], $request, array_filter(['lesson_id' => $lessonId]), $device);
+        if (in_array($data['event'], ['suspicious_watermark', 'suspicious_devtools'], true)) {
+            $device->forceFill(['view_link_hash' => null])->save();
+            $request->session()->forget('active_view_link');
+        }
         if ($student->fresh()->status !== 'active') {
             return response()->json(['message' => 'أُوقفت الجلسة بسبب تجاوز حد المخالفات.'], 423);
         }

@@ -35,7 +35,14 @@ class VideoStreamController extends Controller
             'video' => $video->id, 'student' => $student->id, 'asset' => 'hls/master.m3u8', 'view' => $viewLink,
         ]);
 
-        return response()->json(['manifest_url' => $url, 'expires_at' => $expiresAt->toIso8601String()]);
+        $renditions = collect($video->enabled_resolutions ?? [])->mapWithKeys(fn (int $height): array => [
+            $height => URL::temporarySignedRoute('student.video.asset', $expiresAt, [
+                'video' => $video->id, 'student' => $student->id, 'asset' => 'hls/v'.$height.'/index.m3u8', 'view' => $viewLink,
+            ]),
+        ])->all();
+
+        return response()->json(['manifest_url' => $url, 'rendition_urls' => $renditions, 'expires_at' => $expiresAt->toIso8601String()])
+            ->header('Cache-Control', 'private, no-store');
     }
 
     public function asset(Request $request, LessonVideo $video, Student $student, string $asset, VideoStreamService $streams): Response
@@ -43,6 +50,9 @@ class VideoStreamController extends Controller
         abort_unless($student->is($request->user('student')), 404);
         $this->authorizeStream($student, $video);
         abort_unless(preg_match('/\A(?:hls\/(?:master\.m3u8|v[1-9]\d{0,3}\/(?:index\.m3u8|segment_\d+\.ts)))\z/D', $asset) === 1, 404);
+        if (preg_match('/\Av(\d+)\//', substr($asset, 4), $resolution)) {
+            abort_unless(in_array((int) $resolution[1], array_map('intval', $video->enabled_resolutions ?? []), true), 404);
+        }
         $relative = substr($asset, 4);
         $path = $video->output_path.'/'.$relative;
         abort_unless(Storage::disk('private')->exists($path), 404);

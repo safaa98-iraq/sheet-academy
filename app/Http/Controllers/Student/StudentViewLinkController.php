@@ -9,6 +9,7 @@ use App\Models\StudentDevice;
 use App\Services\StudentAuditService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Gate;
 
 class StudentViewLinkController extends Controller
@@ -31,12 +32,12 @@ class StudentViewLinkController extends Controller
         }
         $device = StudentDevice::query()->whereKey($request->session()->get('student_device_id'))
             ->where('student_id', $request->user('student')->id)->whereNull('revoked_at')->firstOrFail();
-        $viewLink = bin2hex(random_bytes(32));
+        $viewLink = Crypt::encryptString(bin2hex(random_bytes(32)));
         $device->forceFill(['view_link_hash' => hash('sha256', $viewLink)])->save();
         $request->session()->put('active_view_link', $viewLink);
         $separator = str_contains($url, '?') ? '&' : '?';
 
-        return response()->json(['url' => $url.$separator.'view='.$viewLink]);
+        return response()->json(['url' => $url.$separator.'view='.rawurlencode($viewLink)]);
     }
 
     public function close(Request $request): JsonResponse

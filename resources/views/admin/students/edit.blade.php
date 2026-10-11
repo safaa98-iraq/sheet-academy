@@ -1,5 +1,11 @@
-@extends('admin.layout')
+@extends('admin.layout', ['title' => 'تعديل الطالب'])
 @section('content')
-<div class="admin-head"><div><span class="eyebrow">إدارة الحساب</span><h1>تعديل {{ $student->name }}</h1></div><a href="{{ route('admin.students.index') }}" class="btn"><x-icon name="arrow-right"/><span>رجوع</span></a></div><form class="admin-form" method="post" action="{{ route('admin.students.update',$student) }}">@csrf @method('PUT')<label>اسم الطالب</label><input name="name" required value="{{ old('name',$student->name) }}"><label>البريد الإلكتروني</label><input name="email" type="email" value="{{ old('email',$student->email) }}">@include('admin.students.access-fields')<button class="btn primary" style="margin-top:18px"><x-icon name="save"/><span>حفظ التغييرات</span></button></form>
+<div class="admin-head"><div><span class="eyebrow">إدارة الحساب</span><h1>تعديل {{ $student->name }}</h1></div><a href="{{ route('admin.students.index') }}" class="btn"><x-icon name="arrow-right"/>رجوع</a></div>
+<form class="admin-form student-profile-form" method="post" action="{{ route('admin.students.update',$student) }}">@csrf @method('PUT')
+<h2>بيانات الطالب</h2>@include('admin.students.profile-fields')
+<h2>المواد المتاحة</h2><x-step-tip>اختر المواد المشترك بها؛ يتلقى الطالب تنبيهات المحاضرات الجديدة فيها فقط.</x-step-tip>@include('admin.students.access-fields')
+@include('admin.students.subscription-fields')
+<button class="btn primary"><x-icon name="save"/>حفظ التغييرات</button>
+</form>
 @include('admin.students.actions', ['student' => $student])
 @endsection

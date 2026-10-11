@@ -7,6 +7,8 @@ use App\Http\Requests\Admin\StoreLessonRequest;
 use App\Models\Course;
 use App\Models\GradeLevel;
 use App\Models\Lesson;
+use App\Services\LessonAttachmentService;
+use App\Services\LessonPublicationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,7 +33,13 @@ class LessonController extends Controller
         }
         $selectedCourse?->load(['lessons.video', 'lessons.attachments']);
 
-        return view('admin.lessons.index', compact('gradeLevels', 'courses', 'selectedCourse'));
+        $lectures = Lesson::with(['course.gradeLevel', 'video', 'attachments'])
+            ->when($selectedCourse !== null, fn ($query) => $query->where('course_id', $selectedCourse->id))
+            ->when($request->filled('grade_level_id'), fn ($query) => $query->whereHas('course', fn ($query) => $query->where('grade_level_id', $request->integer('grade_level_id'))))
+            ->when($request->filled('course_id') && $selectedCourse === null, fn ($query) => $query->whereRaw('1 = 0'))
+            ->whereHas('course')->latest('id')->paginate(20)->withQueryString();
+
+        return view('admin.lessons.index', compact('gradeLevels', 'courses', 'selectedCourse', 'lectures'));
     }
 
     /**
@@ -47,12 +55,12 @@ class LessonController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreLessonRequest $request, Course $course): RedirectResponse
+    public function store(StoreLessonRequest $request, Course $course): RedirectResponse|JsonResponse
     {
         $this->authorize('update', $course);
-        $data = $request->validated();
+        $data = $request->safe()->except(['attachments', 'publish_course', 'enabled_resolutions']);
         $publicationStatus = $data['publication_status'] ?? (($data['is_published'] ?? false) ? 'published' : 'draft');
-        $lesson = DB::transaction(function () use ($course, $data, $publicationStatus): Lesson {
+        $lesson = DB::transaction(function () use ($course, $data, $publicationStatus, $request): Lesson {
             $lesson = $course->lessons()->create([
                 ...$data,
                 'slug' => Str::slug($data['title']).'-'.Str::lower(Str::random(5)),
@@ -63,12 +71,18 @@ class LessonController extends Controller
                 'is_published' => $publicationStatus === 'published',
             ]);
             $this->attachToDefaultSection($course, $lesson);
+            app(LessonAttachmentService::class)->store($lesson, $request->validated('attachments', []));
 
             return $lesson;
         });
+        $this->publishCourseIfRequested($request, $course, $lesson);
         $this->forgetCurriculumCache($course);
+        app(LessonPublicationService::class)->notify($lesson);
+        if ($request->expectsJson()) {
+            return response()->json($this->editorUrls($lesson), 201);
+        }
 
-        return redirect()->route('admin.lessons.edit', $lesson)->with('status', 'تم إنشاء المحاضرة. أضف الفيديو والمرفقات من هذه الصفحة.');
+        return redirect()->route('admin.lessons.edit', $lesson)->with('status', 'تم حفظ المحاضرة والمرفقات.');
     }
 
     /**
@@ -97,7 +111,7 @@ class LessonController extends Controller
     {
         abort_if($lesson->course === null, 404);
         $this->authorize('update', $lesson->course);
-        $data = $request->validated();
+        $data = $request->safe()->except(['attachments', 'publish_course', 'enabled_resolutions']);
         if (isset($data['title'])) {
             $data['slug'] = Str::slug($data['title']).'-'.Str::lower(Str::random(5));
         }
@@ -110,19 +124,30 @@ class LessonController extends Controller
         if (isset($data['publication_status'])) {
             $data['is_published'] = $data['publication_status'] === 'published';
         }
+        $data['duration_seconds'] = $data['duration_seconds'] ?? $lesson->duration_seconds;
+        $data['position'] = $data['position'] ?? $lesson->position;
         if ($lesson->video?->status === 'ready') {
             $data['duration_seconds'] = $lesson->video->duration_seconds ?? $lesson->duration_seconds;
         }
-        $lesson->update($data);
+        DB::transaction(function () use ($lesson, $data, $request): void {
+            if ($request->has('enabled_resolutions')) {
+                abort_unless($lesson->video?->status === 'ready', 409);
+                $lesson->video->update(['enabled_resolutions' => array_map('intval', $request->validated('enabled_resolutions'))]);
+            }
+            $lesson->update($data);
+            app(LessonAttachmentService::class)->store($lesson, $request->validated('attachments', []));
+        });
         $lesson->curriculumNode()->update([
             'title' => $lesson->title,
             'publication_status' => $lesson->publication_status,
             'scheduled_at' => $lesson->scheduled_at,
         ]);
+        $this->publishCourseIfRequested($request, $lesson->course, $lesson);
         $this->forgetCurriculumCache($lesson->course);
+        app(LessonPublicationService::class)->notify($lesson);
 
         if ($request->expectsJson()) {
-            return response()->json(['message' => 'تم حفظ المحاضرة.']);
+            return response()->json(['message' => 'تم حفظ المحاضرة.', ...$this->editorUrls($lesson)]);
         }
 
         return redirect()->route('admin.lessons.edit', $lesson)->with('status', 'تم حفظ المحاضرة.');
@@ -142,6 +167,21 @@ class LessonController extends Controller
         $this->forgetCurriculumCache($course);
 
         return redirect()->route('admin.courses.edit', $course)->with('status', 'تم حذف الدرس.');
+    }
+
+    private function publishCourseIfRequested(StoreLessonRequest $request, Course $course, Lesson $lesson): void
+    {
+        if ($request->boolean('publish_course') && in_array($lesson->publication_status, ['published', 'scheduled'], true)) {
+            $scheduledAt = $lesson->publication_status === 'scheduled' ? $lesson->scheduled_at : null;
+            $course->update(['publication_status' => $lesson->publication_status, 'published_at' => $scheduledAt === null ? now() : null, 'scheduled_at' => $scheduledAt]);
+            $course->curriculumRoot()->update(['publication_status' => $lesson->publication_status, 'scheduled_at' => $scheduledAt]);
+        }
+    }
+
+    private function editorUrls(Lesson $lesson): array
+    {
+        return ['lesson_id' => $lesson->id, 'edit_url' => route('admin.lessons.edit', $lesson), 'update_url' => route('admin.lessons.update', $lesson),
+            'upload_url' => route('admin.lessons.video-uploads.start', $lesson), 'status_url' => route('admin.lessons.video-status', $lesson)];
     }
 
     private function attachToDefaultSection(Course $course, Lesson $lesson): void

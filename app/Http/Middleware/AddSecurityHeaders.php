@@ -21,8 +21,14 @@ class AddSecurityHeaders
         View::share('cspNonce', $nonce);
         Vite::useCspNonce($nonce);
 
+        $blockedOrigin = $request->is('videos/*', 'documents/*', 'lesson-attachments/*')
+            && ($request->header('Sec-Fetch-Site') === 'cross-site'
+                || ($request->hasHeader('Origin') && $request->header('Origin') !== $request->getSchemeAndHttpHost()));
+
         /** @var Response $response */
-        $response = $next($request);
+        $response = $blockedOrigin
+            ? response('غير مصرح بفتح المحتوى من موقع آخر.', 403)->header('Cache-Control', 'private, no-store')
+            : $next($request);
         $scriptSources = "'self' 'nonce-{$nonce}'";
         $connectSources = "'self' blob:";
         if (config('app.env') === 'local') {
@@ -53,6 +59,7 @@ class AddSecurityHeaders
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), display-capture=()');
         $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
+        $response->headers->set('Cross-Origin-Resource-Policy', 'same-origin');
         $response->headers->set('X-Permitted-Cross-Domain-Policies', 'none');
         $response->headers->set('X-XSS-Protection', '0');
         if (str_starts_with((string) $response->headers->get('Content-Type'), 'text/html')) {

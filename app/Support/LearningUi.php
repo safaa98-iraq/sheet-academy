@@ -8,6 +8,7 @@ use App\Models\Student;
 use App\Services\StudentAuditService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Gate;
 
 class LearningUi
 {
@@ -16,6 +17,7 @@ class LearningUi
     {
         $course->loadMissing('gradeLevel', 'lessons.progress', 'lessons.attachments', 'lessons.video');
         $student?->loadMissing('preference');
+        $student?->loadMissing('playlists.items');
         $cacheKey = 'curriculum:course:'.$course->id.($preview ? ':preview' : ':published');
         $rows = Cache::remember($cacheKey, now()->addMinutes(3), function () use ($course): array {
             return CurriculumNode::query()->where('course_id', $course->id)
@@ -29,7 +31,8 @@ class LearningUi
         }
 
         $lessonModels = $course->lessons->keyBy('id');
-        $visibleLessons = $lessonModels->filter(fn ($lesson): bool => $preview || $lesson->isVisibleToStudents());
+        $visibleLessons = $lessonModels->filter(fn ($lesson): bool => $preview || ($student !== null
+            ? Gate::forUser($student)->allows('viewByStudent', $lesson) : $lesson->isVisibleToStudents()));
         $nodes = collect($rows)->filter(function (array $node) use ($visibleLessons): bool {
             if ($node['type'] !== 'lesson') {
                 return true;
@@ -92,13 +95,14 @@ class LearningUi
                     $url = $preview ? route('admin.courses.preview', ['course' => $course, 'lesson' => $model->id]) : route('student.lesson.show', $model);
                     $lesson = [
                         'id' => $lessonId, 'title' => $model->title, 'duration' => $model->duration_seconds,
+                        'playlist_item_id' => $student?->playlists->firstWhere('name', 'قائمتي')?->items->firstWhere('lesson_id', $model->id)?->id,
                         'type' => $model->type, 'position' => $model->position, 'chapter' => $currentSectionTitle ?? 'محتوى المادة',
                         'stream_url' => $model->video?->status === 'ready' ? ($preview
                             ? route('admin.videos.preview-session', $model->video)
                             : route('student.video.session', ['video' => $model->video, 'view' => request()->query('view')])) : null,
                         'video_status_url' => $preview ? route('admin.lessons.video-status', $model) : route('student.lessons.video-status', ['lesson' => $model, 'view' => request()->query('view')]),
                         'video_status' => $model->video?->status ?? $model->video_status,
-                        'available_resolutions' => $model->video?->available_resolutions ?? [],
+                        'available_resolutions' => $model->video?->enabled_resolutions ?? $model->video?->available_resolutions ?? [],
                         'watermark' => $student !== null ? app(StudentAuditService::class)->watermarkText($student) : '',
                         'preferred_quality' => $student?->preference?->video_quality ?? 'auto',
                         'preferred_speed' => $student?->preference?->playback_speed ?? 1,
@@ -153,7 +157,7 @@ class LearningUi
 
         return [
             'grade_level_id' => $course->grade_level_id, 'grade_level_name' => $course->gradeLevel?->name,
-            'id' => (string) $course->id, 'title' => $course->title, 'english' => 'DENTAL EDUCATION',
+            'id' => (string) $course->id, 'title' => $course->title, 'english' => 'تعليم طب الأسنان',
             'description' => $course->description, 'cover' => ['anatomy', 'dental', 'pharma', 'xray'][$course->id % 4],
             'cover_url' => $course->cover_image, 'teacher' => 'فريق الأكاديمية', 'lessons' => $flatLessons,
             'curriculum' => $curriculum,

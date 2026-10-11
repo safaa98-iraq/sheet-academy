@@ -30,14 +30,14 @@ export async function reportStatus(job, status, details = {}) {
 
 async function probe(sourcePath) {
     const {stdout} = await execFile(process.env.FFPROBE_PATH || 'ffprobe', [
-        '-v', 'error', '-show_entries', 'stream=codec_type,width,height:format=duration', '-of', 'json', sourcePath,
-    ], {maxBuffer: 1024 * 1024});
+        '-protocol_whitelist', 'file,pipe,crypto', '-v', 'error', '-show_entries', 'stream=codec_type,width,height:format=duration', '-of', 'json', sourcePath,
+    ], {maxBuffer: 1024 * 1024, timeout: 20000, killSignal: 'SIGKILL'});
     const data = JSON.parse(stdout);
     const videoStream = data.streams?.find(stream => stream.codec_type === 'video');
     const width = Number(videoStream?.width);
     const height = Number(videoStream?.height);
     const durationSeconds = Math.floor(Number(data.format?.duration));
-    if (!width || !height || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 86400) {
+    if (!width || !height || width * height > 33_177_600 || !Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 86400) {
         throw new Error('Invalid or unsupported video stream');
     }
     return {width, height, durationSeconds, hasAudio: data.streams?.some(stream => stream.codec_type === 'audio') || false};
@@ -46,12 +46,14 @@ async function probe(sourcePath) {
 function runFfmpeg(args) {
     return new Promise((resolve, reject) => {
         const child = spawn(process.env.FFMPEG_PATH || 'ffmpeg', args, {stdio: ['ignore', 'ignore', 'pipe']});
+        const deadline = setTimeout(() => child.kill('SIGKILL'), 2 * 60 * 60 * 1000);
         let recentErrorOutput = '';
         child.stderr?.on('data', chunk => {
             recentErrorOutput = `${recentErrorOutput}${chunk.toString()}`.slice(-8192);
         });
-        child.on('error', () => reject(new Error('FFmpeg could not be started')));
+        child.on('error', () => {clearTimeout(deadline); reject(new Error('FFmpeg could not be started'));});
         child.on('close', code => {
+            clearTimeout(deadline);
             if (code === 0) resolve();
             else {
                 process.stderr.write(`ffmpeg failed: ${recentErrorOutput.slice(-1000)}\n`);
@@ -89,7 +91,7 @@ export async function processVideo(job) {
             const [maxrate, bufsize] = maxBitrates[height] || ['400k', '600k'];
             const width = Math.max(2, Math.floor((metadata.width * height / metadata.height) / 2) * 2);
             await runFfmpeg([
-                '-nostdin', '-y', '-i', sourcePath, '-map', '0:v:0', '-map', '0:a:0?', '-vf', `scale=${width}:${height}:flags=lanczos`,
+                '-nostdin', '-protocol_whitelist', 'file,pipe,crypto', '-y', '-i', sourcePath, '-map', '0:v:0', '-map', '0:a:0?', '-vf', `scale=${width}:${height}:flags=lanczos`,
                 '-c:v', 'libx264', '-preset', process.env.FFMPEG_PRESET || 'medium', '-profile:v', 'high', '-pix_fmt', 'yuv420p',
                 '-b:v', maxrate, '-maxrate', maxrate, '-bufsize', bufsize, '-force_key_frames', 'expr:gte(t,n_forced*4)',
                 '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-f', 'hls', '-hls_time', '4', '-hls_playlist_type', 'vod',

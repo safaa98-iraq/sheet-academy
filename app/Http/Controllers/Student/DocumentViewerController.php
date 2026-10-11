@@ -9,7 +9,6 @@ use App\Services\StudentDocumentPageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -45,11 +44,9 @@ class DocumentViewerController extends Controller
     public function page(Request $request, LessonAttachment $attachment, int $page, StudentDocumentPageService $pages): Response
     {
         abort_unless($attachment->lesson !== null && Gate::forUser($request->user('student'))->allows('viewByStudent', $attachment->lesson), 404);
-        $path = $pages->pagePath($attachment, $page);
-        $mime = $attachment->mime_type === 'application/pdf' ? 'image/png' : $attachment->mime_type;
 
-        return response()->file(Storage::disk('private')->path($path), [
-            'Content-Type' => $mime, 'Content-Disposition' => 'inline', 'Cache-Control' => 'private, no-store, max-age=0',
+        return response($pages->watermarkedPage($attachment, $page, $request->user('student')), 200, [
+            'Content-Type' => 'image/png', 'Content-Disposition' => 'inline', 'Cache-Control' => 'private, no-store, max-age=0',
             'X-Content-Type-Options' => 'nosniff', 'Referrer-Policy' => 'same-origin',
         ]);
     }

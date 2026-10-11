@@ -61,6 +61,9 @@ class StudentController extends Controller
             $student = Student::create([
                 'name' => $data['name'],
                 'email' => $data['email'] ?? null,
+                'college' => $data['college'] ?? null, 'phone' => $data['phone'] ?? null,
+                'study_grade_level_id' => $data['study_grade_level_id'] ?? ($data['grade_level_id'] ?? null),
+                'subscription_expires_at' => $this->subscriptionEnd($data),
                 'status' => 'active',
                 'created_by' => $request->user('web')->id,
                 'grade_level_id' => $data['grade_level_id'] ?? null,
@@ -72,7 +75,7 @@ class StudentController extends Controller
             return $student;
         });
 
-        return redirect()->route('admin.students.index')->with('status', 'تم إنشاء حساب الطالب. يمكنك عرض رمز الوصول ونسخه من ملف الطالب.');
+        return redirect()->route('admin.students.index')->with('status', 'تم إنشاء حساب الطالب. يظهر رمز الوصول مرة واحدة. انسخه الآن.');
     }
 
     /**
@@ -95,7 +98,7 @@ class StudentController extends Controller
             ]];
         });
 
-        return view('admin.students.show', ['accessibleCourses' => $accessibleCourses, 'courseProgress' => $courseProgress, 'student' => $student->load(['gradeLevel', 'courses', 'devices' => fn ($query) => $query->latest('last_seen_at'), 'tokens' => fn ($query) => $query->latest()])]);
+        return view('admin.students.show', ['accessibleCourses' => $accessibleCourses, 'courseProgress' => $courseProgress, 'student' => $student->load(['gradeLevel', 'studyGradeLevel', 'courses', 'devices' => fn ($query) => $query->latest('last_seen_at'), 'tokens' => fn ($query) => $query->latest()])]);
     }
 
     /**
@@ -116,7 +119,10 @@ class StudentController extends Controller
         $this->authorize('update', $student);
         $data = $request->validated();
         DB::transaction(function () use ($student, $data): void {
-            $student->update(['name' => $data['name'], 'email' => $data['email'] ?? null, 'grade_level_id' => $data['grade_level_id'] ?? null]);
+            $student->update(['name' => $data['name'], 'email' => $data['email'] ?? null, 'grade_level_id' => $data['grade_level_id'] ?? null,
+                'college' => $data['college'] ?? $student->college, 'phone' => $data['phone'] ?? $student->phone,
+                'study_grade_level_id' => $data['study_grade_level_id'] ?? $student->study_grade_level_id,
+                'subscription_expires_at' => array_key_exists('subscription_duration', $data) ? $this->subscriptionEnd($data) : $student->subscription_expires_at]);
             $student->courses()->sync(($data['access_type'] ?? 'courses') === 'grade' ? [] : ($data['course_ids'] ?? []));
         });
 
@@ -134,15 +140,22 @@ class StudentController extends Controller
         return redirect()->route('admin.students.index')->with('status', 'تم حذف حساب الطالب.');
     }
 
+    private function subscriptionEnd(array $data): ?Carbon
+    {
+        $duration = $data['subscription_duration'] ?? 'unlimited';
+
+        return match ($duration) {
+            'unlimited' => null,
+            'custom' => Carbon::parse($data['subscription_expires_at']),
+            default => now()->addDays((int) $duration),
+        };
+    }
+
     public function revealToken(Student $student): JsonResponse
     {
         $this->authorize('update', $student);
-        $token = $student->tokens()->latest('id')->first();
-        if ($token === null || $token->encrypted_token === null) {
-            return response()->json(['message' => 'هذا الرمز القديم محفوظ كتجزئة فقط ولا يمكن عرضه. أصدر توكناً جديداً ليصبح قابلاً للعرض والنسخ.'], 422)->header('Cache-Control', 'private, no-store');
-        }
 
-        return response()->json(['token' => $token->encrypted_token])->header('Cache-Control', 'private, no-store');
+        return response()->json(['message' => 'رمز الدخول محفوظ كتجزئة فقط ويظهر مرة واحدة عند إصداره. أصدر رمزاً جديداً إذا فقدته.'], 422)->header('Cache-Control', 'private, no-store');
     }
 
     public function regenerate(Student $student, StudentTokenService $tokens, Request $request): RedirectResponse
@@ -153,13 +166,13 @@ class StudentController extends Controller
         }
         $data = $request->validate([
             'expires_at' => ['nullable', 'date', 'after:now'],
-            'device_limit' => ['sometimes', 'required', 'integer', 'between:1,10'],
+            'device_limit' => ['sometimes', 'required', 'integer', 'in:1'],
         ], [
             'expires_at.date' => 'أدخل تاريخ انتهاء صالحاً.',
             'expires_at.after' => 'تاريخ انتهاء الرمز يجب أن يكون في المستقبل.',
             'device_limit.required' => 'حدد عدد الأجهزة المسموح بها.',
             'device_limit.integer' => 'عدد الأجهزة يجب أن يكون عدداً صحيحاً.',
-            'device_limit.between' => 'عدد الأجهزة يجب أن يكون بين 1 و10.',
+            'device_limit.in' => 'يسمح بجلسة واحدة فقط لكل طالب.',
         ]);
         $deviceLimit = (int) ($data['device_limit'] ?? $student->tokens()->latest('id')->value('device_limit'));
         $issued = $tokens->issue($student, $request->user('web'),
@@ -177,6 +190,9 @@ class StudentController extends Controller
         $data = $request->validated();
         DB::transaction(function () use ($student, $data): void {
             $student->update(['status' => $data['status']]);
+            if ($data['status'] !== 'active') {
+                $student->devices()->whereNull('revoked_at')->update(['revoked_at' => now(), 'view_link_hash' => null]);
+            }
             $student->tokens()->whereIn('status', ['active', 'frozen', 'suspended'])->update(['status' => $data['status']]);
         });
 

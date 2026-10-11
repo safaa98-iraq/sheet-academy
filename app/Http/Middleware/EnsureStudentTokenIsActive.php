@@ -19,7 +19,7 @@ class EnsureStudentTokenIsActive
             $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
         })->first() : null;
 
-        if ($student === null || $student->status !== 'active' || $token === null) {
+        if ($student === null || $student->status !== 'active' || ! $student->subscriptionIsActive() || $token === null) {
             StudentDevice::query()->whereKey($request->session()->get('student_device_id'))
                 ->where('student_id', $student?->id)->whereNull('revoked_at')
                 ->update(['revoked_at' => now(), 'view_link_hash' => null]);
@@ -27,6 +27,12 @@ class EnsureStudentTokenIsActive
             $request->session()->forget('student_token_id');
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+
+            if ($student !== null && ! $student->subscriptionIsActive()) {
+                $message = 'انتهت مدة اشتراكك. تواصل مع الأستاذ لتجديدها.';
+
+                return $request->expectsJson() ? response()->json(['message' => $message], 423) : redirect()->route('student.login')->withErrors(['token' => $message]);
+            }
 
             return redirect()->route('student.login')->withErrors(['token' => 'انتهت صلاحية الجلسة. أدخل رمز الوصول مجدداً.']);
         }

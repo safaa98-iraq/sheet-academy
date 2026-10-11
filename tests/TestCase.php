@@ -3,10 +3,19 @@
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Testing\TestResponse;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        if (! ParallelTesting::token()) {
+            ParallelTesting::resolveTokenUsing(static fn (): string => 'filesystem-'.getmypid());
+        }
+    }
+
     protected function loginStudent(string $token): TestResponse
     {
         $response = $this->post('/login', ['token' => $token]);

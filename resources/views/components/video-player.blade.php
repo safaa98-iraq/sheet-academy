@@ -4,7 +4,7 @@
     <div class="player-stage" data-player-stage>
         @if(!empty($lesson['stream_url']))<video class="academy-hls-video" data-hls-video playsinline preload="none" controlslist="nodownload noremoteplayback" disablepictureinpicture aria-label="فيديو {{ $lesson['title'] }}"></video>@endif
         @if($preview && empty($lesson['stream_url']))<div class="lecture-slide" aria-hidden="true">
-            <div class="lecture-caption"><span>DENTAL ANATOMY</span><h2>كل تفصيلة<br>تصنع الفارق.</h2><p>رحلة إلى داخل السن</p><span class="lecture-rule"></span><small>د. سليم أحمد · {{ $lesson['course_title'] }}</small></div>
+            <div class="lecture-caption"><span>تشريح الأسنان</span><h2>كل تفصيلة<br>تصنع الفارق.</h2><p>رحلة إلى داخل السن</p><span class="lecture-rule"></span><small>د. سليم أحمد · {{ $lesson['course_title'] }}</small></div>
             <svg class="lecture-tooth" viewBox="0 0 360 410" fill="none">
                 <defs><linearGradient id="tooth-enamel" x1="91" y1="54" x2="264" y2="329" gradientUnits="userSpaceOnUse"><stop stop-color="#fcfbf5"/><stop offset=".5" stop-color="#dce9e3"/><stop offset="1" stop-color="#93b9af"/></linearGradient><linearGradient id="tooth-dentin" x1="110" y1="120" x2="218" y2="292"><stop stop-color="#efe4c6"/><stop offset="1" stop-color="#b4ac8c"/></linearGradient><radialGradient id="tooth-glow"><stop stop-color="#617f7c" stop-opacity=".4"/><stop offset="1" stop-color="#617f7c" stop-opacity="0"/></radialGradient></defs>
                 <circle cx="186" cy="196" r="176" fill="url(#tooth-glow)"/>
@@ -15,7 +15,7 @@
                 <path d="m139 333 19-107m55 107-5-91m-35-40 3-45" stroke="#8d5957" stroke-width="3" stroke-linecap="round"/>
                 <path d="M97 101c-12 25-2 47 7 62M119 81c14-5 30 5 44 9" stroke="white" stroke-width="7" stroke-linecap="round" opacity=".75"/>
                 <g stroke="#abc4bc" stroke-width="1"><path d="m247 102 45-19h30"/><circle cx="247" cy="102" r="3" fill="#abc4bc"/><path d="m231 159 61 8h35"/><circle cx="231" cy="159" r="3" fill="#abc4bc"/><path d="m185 168-116 42H25"/><circle cx="185" cy="168" r="3" fill="#abc4bc"/></g>
-                <g fill="#cfdfd9" font-size="11" font-family="sans-serif"><text x="292" y="72">ENAMEL</text><text x="293" y="156">DENTIN</text><text x="27" y="199">PULP</text></g>
+                <g fill="#cfdfd9" font-size="11" font-family="sans-serif"><text x="292" y="72">المينا</text><text x="293" y="156">العاج</text><text x="27" y="199">اللب</text></g>
             </svg>
             <span class="lecture-slide-number">01 / 08</span>
         </div>@endif

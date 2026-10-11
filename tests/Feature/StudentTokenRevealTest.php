@@ -12,16 +12,17 @@ class StudentTokenRevealTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_professor_can_reveal_encrypted_token_without_exposing_it_in_the_table(): void
+    public function test_token_is_hash_only_and_cannot_be_revealed_again(): void
     {
         $student = Student::factory()->create();
         $issued = app(StudentTokenService::class)->issue($student);
-        $this->assertNotSame($issued['token'], $issued['record']->getRawOriginal('encrypted_token'));
+        $this->assertNull($issued['record']->getRawOriginal('encrypted_token'));
+        $this->assertSame(hash('sha256', $issued['token']), $issued['record']->token_hash);
         $this->assertArrayNotHasKey('encrypted_token', $issued['record']->toArray());
         $this->actingAs(User::factory()->create(['is_super_admin' => true]), 'web');
         $this->get(route('admin.students.index'))->assertOk()->assertSee('إدارة الطالب')->assertDontSee('data-reveal-student-token', false)->assertDontSee($issued['token']);
-        $this->get(route('admin.students.show', $student))->assertOk()->assertSee('عرض التوكن ونسخه')->assertSee('حذف حساب الطالب')->assertDontSee($issued['token']);
-        $response = $this->postJson(route('admin.students.token.reveal', $student))->assertOk()->assertExactJson(['token' => $issued['token']]);
+        $this->get(route('admin.students.show', $student))->assertOk()->assertDontSee('عرض التوكن ونسخه')->assertSee('حذف حساب الطالب')->assertDontSee($issued['token']);
+        $response = $this->postJson(route('admin.students.token.reveal', $student))->assertUnprocessable()->assertDontSee($issued['token']);
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
     }
 
@@ -29,9 +30,8 @@ class StudentTokenRevealTest extends TestCase
     {
         $student = Student::factory()->create();
         $issued = app(StudentTokenService::class)->issue($student);
-        $issued['record']->update(['encrypted_token' => null]);
         $this->actingAs(User::factory()->create(['is_super_admin' => true]), 'web');
-        $this->postJson(route('admin.students.token.reveal', $student))->assertUnprocessable()->assertJsonPath('message', 'هذا الرمز القديم محفوظ كتجزئة فقط ولا يمكن عرضه. أصدر توكناً جديداً ليصبح قابلاً للعرض والنسخ.');
+        $this->postJson(route('admin.students.token.reveal', $student))->assertUnprocessable()->assertJsonPath('message', 'رمز الدخول محفوظ كتجزئة فقط ويظهر مرة واحدة عند إصداره. أصدر رمزاً جديداً إذا فقدته.');
         $this->assertSame('active', $issued['record']->fresh()->status);
     }
 

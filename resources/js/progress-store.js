@@ -68,7 +68,7 @@ function persistServerProgress(lessonId, progress, options = {}) {
     };
 
     if (options.beacon && navigator.sendBeacon) {
-        const body = new URLSearchParams({...payload, _token: csrf});
+        const body = new URLSearchParams({...payload, is_playing: options.isPlaying === true ? '1' : '0', _token: csrf});
         navigator.sendBeacon(endpoint, body);
         return;
     }
@@ -89,6 +89,10 @@ function sendNextSave(lessonId) {
         headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': pending.csrf},
         body: JSON.stringify(pending.payload),
     }).then(async (response) => {
+        if (response.redirected || [401, 403, 404, 419, 423].includes(response.status)) {
+            document.dispatchEvent(new CustomEvent('student:session-ended'));
+            return;
+        }
         if (!response.ok) return;
         const result = await response.json();
         const serverProgress = normalizeProgress({

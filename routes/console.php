@@ -9,3 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('app:prune-student-document-pages')->daily()->withoutOverlapping();
+
+Schedule::command('app:notify-published-lectures')->everyMinute()->withoutOverlapping(10);

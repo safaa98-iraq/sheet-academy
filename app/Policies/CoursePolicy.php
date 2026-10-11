@@ -26,7 +26,7 @@ class CoursePolicy
 
     public function viewByStudent(Student $student, Course $course): bool
     {
-        return $student->status === 'active'
+        return $student->status === 'active' && $student->subscriptionIsActive()
             && $course->isVisibleToStudents()
             && $student->accessibleCourses()->whereKey($course->id)->exists();
     }

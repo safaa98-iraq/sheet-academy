@@ -1,0 +1,34 @@
+{
+  "results": [
+    {
+      "name": "stage → course → lecture created through teacher UI",
+      "result": "PASS"
+    },
+    {
+      "name": "interrupted upload resumes from server HEAD offset",
+      "result": "PASS 131072 bytes"
+    },
+    {
+      "name": "wrong chunk offset",
+      "result": "BLOCKED 422"
+    },
+    {
+      "name": "real Redis queue → FFmpeg → authenticated callback",
+      "result": "PASS queued → processing → ready"
+    },
+    {
+      "name": "generated adaptive resolutions",
+      "result": "360 / 480 / 720"
+    },
+    {
+      "name": "upload updates lesson type and teacher status",
+      "result": "PASS"
+    },
+    {
+      "name": "worker API without service token",
+      "result": "BLOCKED 401"
+    }
+  ],
+  "lessonId": 1,
+  "bytes": 36636389
+}

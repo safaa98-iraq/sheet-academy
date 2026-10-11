@@ -1,4 +1,12 @@
-@extends('admin.layout')
+@extends('admin.layout', ['title' => 'إنشاء طالب'])
 @section('content')
-<div class="admin-head"><div><span class="eyebrow">حساب جديد</span><h1>إنشاء طالب</h1><p class="muted">يمكن عرض رمز الوصول ونسخه بعد الحفظ من ملف الطالب.</p></div><a href="{{ route('admin.students.index') }}" class="btn"><x-icon name="arrow-right"/><span>رجوع</span></a></div><form class="admin-form" method="post" action="{{ route('admin.students.store') }}">@csrf<label for="name">اسم الطالب</label><input id="name" name="name" value="{{ old('name') }}" required maxlength="150"><label for="email">البريد (اختياري)</label><input id="email" name="email" type="email" value="{{ old('email') }}">@include('admin.students.access-fields')<label for="expires_at">انتهاء رمز الدخول (اختياري)</label><input id="expires_at" name="expires_at" type="datetime-local"><label for="device_limit">الحد الأقصى للأجهزة المتزامنة</label><select id="device_limit" name="device_limit">@foreach(range(1, 10) as $limit)<option value="{{ $limit }}" @selected((int)old('device_limit', config('audit.device_limit', 1)) === $limit)>{{ $limit }} {{ $limit === 1 ? 'جهاز' : 'أجهزة' }}</option>@endforeach</select><button class="btn primary" style="margin-top:20px"><x-icon name="plus"/><span>إنشاء الطالب وإصدار الرمز</span></button></form>
+<div class="admin-head"><div><span class="eyebrow">حساب جديد</span><h1>إضافة طالب</h1><p class="muted">بياناته، اشتراكه، ومواده في خطوة واحدة.</p></div><a href="{{ route('admin.students.index') }}" class="btn"><x-icon name="arrow-right"/>رجوع</a></div>
+<form class="admin-form student-profile-form" method="post" action="{{ route('admin.students.store') }}">@csrf
+<h2>١. بيانات الطالب</h2>@include('admin.students.profile-fields')
+<h2>٢. المواد المتاحة</h2><x-step-tip>المرحلة الدراسية أعلاه تصف الطالب. هنا اختر المواد التي اشترك بها، أو امنحه مرحلة كاملة.</x-step-tip>@include('admin.students.access-fields')
+<h2>٣. الاشتراك والدخول</h2>@include('admin.students.subscription-fields')
+<input type="hidden" name="device_limit" value="1">
+<x-step-tip>بعد الحفظ يظهر رمز من 8 خانات مرة واحدة. انسخه وأرسله للطالب؛ لا يمكن استرجاعه لاحقاً، ويمكن إصدار بديل عند فقده.</x-step-tip>
+<button class="btn primary" type="submit"><x-icon name="plus"/>إنشاء الطالب وإصدار الرمز</button>
+</form>
 @endsection

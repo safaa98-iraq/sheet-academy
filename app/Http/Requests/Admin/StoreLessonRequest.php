@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreLessonRequest extends FormRequest
 {
@@ -32,6 +33,12 @@ class StoreLessonRequest extends FormRequest
             'body_html' => ['nullable', 'string', 'max:100000'],
             'publication_status' => ['sometimes', 'in:draft,published,scheduled'],
             'scheduled_at' => ['nullable', 'date', 'required_if:publication_status,scheduled', 'after:now'],
+            'enabled_resolutions' => ['sometimes', 'array', 'min:1'],
+            'enabled_resolutions.*' => ['required', 'integer', 'distinct', Rule::in($this->route('lesson')?->video?->available_resolutions ?? [])],
+            'publish_course' => ['sometimes', 'boolean'],
+            'notify_students' => ['sometimes', 'boolean'],
+            'attachments' => ['sometimes', 'array', 'max:10'],
+            'attachments.*' => UploadLessonAttachmentsRequest::fileRules(),
             'video_reference' => ['nullable', 'string', 'max:2048'],
         ];
     }

@@ -46,7 +46,7 @@ document.querySelectorAll('[data-publication-fields]').forEach(panel => {
 });
 
 const lectureForm = document.querySelector('#lecture-content-form');
-if (lectureForm) {
+if (lectureForm && !lectureForm.hasAttribute('data-simple-publisher')) {
     let dirty = false;
     const status = lectureForm.querySelector('[data-rich-save-status]');
     const markDirty = () => { dirty = true; status.textContent = 'تغييرات غير محفوظة'; };

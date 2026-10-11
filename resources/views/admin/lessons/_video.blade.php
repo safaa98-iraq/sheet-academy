@@ -8,7 +8,7 @@
                         @foreach(array_values(array_unique([1080, 720, 480, 360, 240, ...($lesson->video?->available_resolutions ?? [])])) as $resolution)
                             @if(in_array($resolution, $lesson->video?->available_resolutions ?? [], true))<div class="video-resolution-row" data-video-resolution-row><label><input type="checkbox" value="{{ $resolution }}" @checked(in_array($resolution, $lesson->video?->enabled_resolutions ?? [], true)) data-video-resolution> بث {{ $resolution }}p</label><button type="button" class="text-button" data-delete-video-resolution data-height="{{ $resolution }}">حذف ملفات الدقة</button></div>@endif
                         @endforeach
-                        <button type="button" class="btn small" data-save-video-resolutions>حفظ الدقات المفعّلة</button>
+                        <span class="muted" data-save-video-resolutions>الدقات المختارة تُحفظ مع زر النشر في نهاية النموذج.</span>
                     </div>
                     <button class="btn small" type="button" data-video-retry hidden>إعادة معالجة الفيديو</button>
                 </section>

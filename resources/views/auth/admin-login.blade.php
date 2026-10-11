@@ -1,1 +1,28 @@
-<!doctype html><html lang="ar" dir="rtl"><head>@include('components.head',['title'=>'دخول الأستاذ'])</head><body><button class="icon-btn login-theme" data-theme aria-label="تبديل الوضع الليلي"><x-icon name="moon"/></button><main class="login"><section class="welcome"><a class="brand" href="{{ route('student.login') }}"><span class="brand-mark"><x-icon name="tooth"/></span> عيادة التعلّم</a><div><span class="eyebrow">مساحة إدارة المنصة</span><h1>كل تفاصيل<br>التعلّم بيدك.</h1><p>أدر المواد والطلاب والصلاحيات من مكان واحد.</p></div><div class="welcome-foot">تسجيل دخول مخصص لفريق إدارة المنصة.</div></section><section class="login-form"><form class="form-box" method="post" action="{{ route('admin.login.store') }}">@csrf<div class="brand mobile-brand"><span class="brand-mark"><x-icon name="tooth"/></span> عيادة التعلّم</div><span class="eyebrow">الأستاذ والأدمنز</span><h2>تسجيل الدخول</h2><p class="muted">استخدم البريد وكلمة المرور الخاصة بحساب الإدارة.</p>@if($errors->any())<p class="error-message">بيانات الدخول غير صحيحة.</p>@endif<label for="email">البريد الإلكتروني</label><input id="email" name="email" type="email" value="{{ old('email') }}" autocomplete="username" required><label for="password">كلمة المرور</label><input id="password" name="password" type="password" autocomplete="current-password" required><button class="btn primary full" type="submit">دخول لوحة الأستاذ ←</button><p class="hint"><a href="{{ route('student.login') }}">العودة لدخول الطلاب</a></p></form></section></main></body></html>
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>@include('components.head', ['title' => 'دخول الأستاذ'])</head>
+<body class="auth-page" data-storage-scope="guest">
+<main class="login">
+    <x-login-hero audience="admin"/>
+    <section class="login-form" aria-labelledby="login-title">
+        <button class="icon-btn login-theme" data-theme aria-label="تبديل الوضع الليلي"><x-icon name="moon"/></button>
+        <form class="form-box" method="post" action="{{ route('admin.login.store') }}">
+            @csrf
+            <div class="login-icon"><x-icon name="layers"/></div>
+            <span class="eyebrow">مساحة الأستاذ وفريق الإدارة</span>
+            <h2 id="login-title">كل التفاصيل بين يديك</h2>
+            <p class="muted">سجّل الدخول لإدارة المحتوى ومتابعة طلابك.</p>
+            @if($errors->any())<p class="error-message" role="alert">بيانات الدخول غير صحيحة.</p>@endif
+            <label for="email">البريد الإلكتروني</label>
+            <input id="email" name="email" type="email" dir="ltr" value="{{ old('email') }}" autocomplete="username" placeholder="name@example.com" required>
+            <label for="password">كلمة المرور</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" placeholder="أدخل كلمة المرور" required>
+            <button class="btn primary full login-submit" type="submit">دخول لوحة الأستاذ<x-icon name="arrow-left"/></button>
+            <div class="login-divider">إدارة تجربة التعلّم</div>
+            <a class="instructor-login" href="{{ route('student.login') }}">العودة إلى دخول الطلاب<x-icon name="arrow-left"/></a>
+        </form>
+        <small class="login-copyright">© {{ date('Y') }} عيادة التعلّم. مساحة تصنع فرقاً.</small>
+    </section>
+</main>
+</body>
+</html>

@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "test:js": "node --test tests/Unit/*.test.mjs"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
@@ -19,5 +20,8 @@
     "dependencies": {
         "hls.js": "^1.7.3",
         "tus-js-client": "^4.3.1"
+    },
+    "overrides": {
+        "shell-quote": "^1.12.0"
     }
 }

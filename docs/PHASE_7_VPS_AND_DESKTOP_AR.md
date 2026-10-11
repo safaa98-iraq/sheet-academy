@@ -36,7 +36,7 @@ sudo ufw allow 443/tcp
 sudo ufw enable
 ```
 
-ثبّت PHP-FPM إصداراً يوافق `^8.3` وامتدادات `curl, mbstring, xml, mysql, zip, intl, bcmath, pcntl, redis, gd` حسب التطبيق. ثبّت Composer 2 مع التحقق من التوقيع/checksum، وNode.js LTS مدعوماً وnpm. تحقق:
+ثبّت PHP-FPM إصداراً لا يقل عن `8.4.1` (متطلبات القفل الحالية؛ يفضل إصدار مدعوم مطابق في CI) وامتدادات `curl, mbstring, xml, mysql, zip, intl, bcmath, pcntl, redis, gd` حسب التطبيق. ثبّت Composer 2 مع التحقق من التوقيع/checksum، وNode.js LTS مدعوماً وnpm. تحقق:
 
 ```bash
 php -v
@@ -65,6 +65,7 @@ cd /srv/sheet-academy/current
 composer install --no-dev --prefer-dist --optimize-autoloader
 npm ci
 npm run build
+npm ci --prefix video-worker
 php artisan migrate --force
 php artisan storage:link
 php artisan config:cache
@@ -84,6 +85,8 @@ SESSION_ENCRYPT=true
 SESSION_SECURE_COOKIE=true
 SESSION_HTTP_ONLY=true
 SESSION_SAME_SITE=lax
+TRUSTED_PROXIES=
+# اتركها فارغة مع اتصال مباشر؛ أدخل عناوين البروكسي الموثوق المحددة فقط عند وجوده.
 QUEUE_CONNECTION=redis
 CACHE_STORE=redis
 FILESYSTEM_DISK=private
@@ -98,7 +101,7 @@ INTERNAL_CALLBACK_URL=https://academy.example.edu/internal/video-processing
 
 ## 3. Nginx وTLS
 
-التجزئة tus حجمها 4 MiB؛ حد الجسم 8 MiB يكفي للـPATCH. `Upload-Length` هو مجموع الفيديو، لا جسم طلب واحد.
+التجزئة tus حجمها 4 MiB. المرفقات تقبل 10 ملفات بحد 20 MiB لكل ملف؛ اضبط PHP: `upload_max_filesize=20M`, `post_max_size=220M`, `max_file_uploads=10`, `memory_limit=512M` (مع قياس الذاكرة عند أقصى أبعاد الصور)، وNginx على 220m كي لا يرفض المرفقات. `Upload-Length` هو مجموع الفيديو، لا جسم طلب واحد.
 
 ```nginx
 server {
@@ -106,7 +109,7 @@ server {
     server_name academy.example.edu;
     root /srv/sheet-academy/current/public;
     index index.php;
-    client_max_body_size 8m;
+    client_max_body_size 220m;
     server_tokens off;
     add_header X-Content-Type-Options nosniff always;
     add_header X-Frame-Options DENY always;
@@ -184,6 +187,14 @@ sudo supervisorctl status
 
 أضف برنامج queue Laravel مستقلاً: `php artisan queue:work redis --sleep=1 --tries=3 --timeout=120`. بعد الإصدار نفّذ `php artisan queue:restart`. ابدأ بـ`WORKER_CONCURRENCY=1` وارفعه فقط بعد قياس CPU/RAM/IO أثناء ملفات تمثيلية.
 
+شغّل المجدول كل دقيقة بمستخدم التطبيق (تنظيف صفحات العارض الخاصة والمهام المجدولة):
+
+```cron
+* * * * * cd /srv/sheet-academy/current && /usr/bin/php artisan schedule:run >> /dev/null 2>&1
+```
+
+ترحيل `2026_10_08_115013_remove_recoverable_student_tokens` يحذف النسخ القابلة لاسترجاع توكن الدخول، ويبقي التجزئات صالحة. احفظ نسخة احتياطية قبل الترحيل؛ بعده يعرض التوكن مرة واحدة عند الإنشاء أو التجديد فقط.
+
 ## 5. النسخ الاحتياطي والاستعادة
 
 استخدم Restic أو ما يماثله إلى هدف منفصل ومشفّر. النسخ المطلوب: dump MySQL متسق، كامل `storage/app/private` (المرفقات وHLS والمفتاح والأصل عند الاحتفاظ به)، ونسخة أسرار `.env`/`APP_KEY` في Secret Manager مستقل. لا تضع dump مكشوفاً أو مفاتيح فك التشفير في الوجهة نفسها.
@@ -221,3 +232,8 @@ ACADEMY_ORIGIN=https://academy.your-domain.tld UPDATE_FEED_URL=https://updates.y
 توقيع Windows يتطلب شهادة Authenticode (`WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`). توقيع macOS يتطلب Developer ID وnotarization (`CSC_LINK`, `CSC_KEY_PASSWORD` وبيانات Apple المعتمدة). احفظ الأسرار في CI secrets. وقّع الملفات وارفع metadata الخاصة بالمحدث إلى feed HTTPS واختبر تحديث Windows وmacOS على جهاز نظيف قبل التوزيع.
 
 نسخة PWA محكومة بسياسات المتصفح ولا يمكنها استدعاء حماية نافذة نظام التشغيل. Electron يطلب `setContentProtection(true)`: Windows 10 إصدار 2004 وما بعده يخفي النافذة من واجهات الالتقاط المدعومة، والإصدارات الأقدم تعرض إطاراً أسود؛ macOS يستخدم `NSWindowSharingNone` لكن أدوات الالتقاط الأحدث التي تعتمد ScreenCaptureKit قد تلتقطها. هذه واجهة نظام وليست DRM، ولا تمنع كل أدوات التسجيل أو التصوير بكاميرا خارجية. لذا كلا الإصدارين يحتاج watermark ورصد ومحاسبة الطالب. Electron الأصلي يحدّث Windows/macOS؛ مستخدم Linux يتلقى إصداراً من مدير الحزم أو قناة AppImage التي جرى التحقق منها تحديداً.
+
+
+### تحديث المراجعة النهائية: الجلسات وروابط العرض
+
+روابط العرض الجديدة تحمل nonce عشوائياً مشفراً عبر Laravel Crypt ومثبتاً بتجزئة في سجل الجهاز. ترحيل `2026_10_08_184118_enforce_single_student_device_sessions` يضبط حد الأجهزة=1 ويُبطل جميع جلسات الطلاب الحالية وروابطها لتطبيق السياسة على البيانات القديمة أيضاً. أخبر الطلاب أن الدخول مجدداً بالتوكن الحالي مطلوب بعد النشر؛ التقدم والدقة المحفوظان لا يتغيران. لا تعيد تفعيل أجهزة مبطلة عند rollback. تحقق بعد النشر من إنهاء الجلسة الأولى عند الدخول من جهاز ثانٍ ومن توقف المشغّل عند نبضة الحفظ التالية؛ البيانات التي سبق تنزيلها لا يمكن سحبها عن بعد.

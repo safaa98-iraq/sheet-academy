@@ -44,4 +44,18 @@ class User extends Authenticatable
             $query->where('permissions.name', $permission);
         })->exists();
     }
+
+    /** @param array<int, int> $roleIds */
+    public function canDelegateRoles(array $roleIds): bool
+    {
+        return $this->is_super_admin || Role::query()->with('permissions')->whereIn('id', $roleIds)->get()
+            ->every(fn (Role $role): bool => $role->permissions->every(fn (Permission $permission): bool => $this->hasPermissionTo($permission->name)));
+    }
+
+    /** @param array<int, int> $permissionIds */
+    public function canDelegatePermissions(array $permissionIds): bool
+    {
+        return $this->is_super_admin || Permission::query()->whereIn('id', $permissionIds)->get()
+            ->every(fn (Permission $permission): bool => $this->hasPermissionTo($permission->name));
+    }
 }

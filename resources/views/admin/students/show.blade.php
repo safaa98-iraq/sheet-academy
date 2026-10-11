@@ -1,5 +1,6 @@
 @extends('admin.layout')
 @section('content')
+<section class="admin-form"><h2>بيانات الطالب والاشتراك</h2><div class="student-overview"><div><span>الكلية</span><strong>{{ $student->college ?: 'غير مسجلة' }}</strong></div><div><span>الهاتف الشخصي</span><strong dir="ltr">{{ $student->phone ?: 'غير مسجل' }}</strong></div><div><span>المرحلة الدراسية</span><strong>{{ $student->studyGradeLevel?->name ?? $student->gradeLevel?->name ?? 'غير مسجلة' }}</strong></div><div><span>انتهاء الاشتراك</span><strong>{{ $student->subscription_expires_at?->format('Y-m-d') ?? 'بدون انتهاء' }}</strong><small>{{ $student->subscriptionIsActive() ? 'الاشتراك متاح' : 'انتهى الاشتراك' }}</small></div></div></section>
 <div class="admin-head">
     <div><span class="eyebrow">إدارة الطلاب / ملف الطالب</span><h1>{{ $student->name }}</h1><p class="muted">{{ $student->email ?: 'لا يوجد بريد إلكتروني' }}</p></div>
     <a class="btn" href="{{ route('admin.students.index') }}"><x-icon name="arrow-right"/><span>العودة إلى الطلاب</span></a>
