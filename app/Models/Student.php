@@ -23,7 +23,7 @@ class Student extends Authenticatable
 
     protected function casts(): array
     {
-        return ['subscription_expires_at' => 'datetime'];
+        return ['subscription_expires_at' => 'datetime', 'subscription_expiry_notified_at' => 'datetime'];
     }
 
     public function subscriptionIsActive(): bool

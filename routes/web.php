@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\CurriculumController;
 use App\Http\Controllers\Admin\GradeLevelController;
 use App\Http\Controllers\Admin\LessonController;
+use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\RolePermissionController;
 use App\Http\Controllers\Admin\StudentController;
@@ -47,6 +48,7 @@ Route::middleware('guest:web')->group(function (): void {
 });
 
 Route::middleware(['auth:student', 'student.token', 'student.device', 'student.agreement'])->group(function (): void {
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->middleware('throttle:30,1')->name('student.notifications.unread-count');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('student.notifications');
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'update'])->whereUuid('notification')->name('student.notifications.read');
     Route::get('/student-agreement', [StudentAgreementController::class, 'show'])->name('student.agreement.show');
@@ -221,8 +223,9 @@ Route::middleware(['auth:web', 'admin.active'])->prefix('admin')->name('admin.')
     Route::middleware('permission:courses.manage')->resource('courses.lessons', LessonController::class)->only(['create', 'store']);
     Route::middleware('permission:courses.manage')->resource('lessons', LessonController::class)->only(['edit', 'update', 'destroy']);
     Route::get('/activity', [AuditLogController::class, 'index'])->middleware('permission:audit.view')->name('activity');
-    Route::get('/notifications/unread-count', fn (Request $request) => response()->json(['count' => $request->user('web')->unreadNotifications()->count()]))
-        ->middleware('permission:audit.view')->name('notifications.unread-count');
+    Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/unread-count', [AdminNotificationController::class, 'unreadCount'])->middleware('throttle:30,1')->name('notifications.unread-count');
+    Route::post('/notifications/{notification}/read', [AdminNotificationController::class, 'update'])->whereUuid('notification')->name('notifications.read');
 });
 
 Route::post('/internal/video-processing', [VideoProcessingController::class, 'update'])->middleware('throttle:internal-video-callback')->name('internal.video-processing.update');

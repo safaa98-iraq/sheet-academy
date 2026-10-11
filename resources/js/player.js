@@ -1,5 +1,6 @@
 import { guardWatermark, toggleProtectedFullscreen } from './watermark-guard';
 import { flushProgress, getProgress, saveProgress, storageScope } from './progress-store';
+import { playbackBuffer, playbackPosition } from './playback-buffer';
 
 export const formatTime = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 
@@ -144,7 +145,7 @@ function initializePlayer(player) {
         const {default: Hls} = await import('hls.js/light');
         if (Hls.isSupported()) {
             if (hls) hls.destroy();
-            hls = new Hls({enableWorker: true, startPosition: savedPosition, xhrSetup: (xhr) => { xhr.withCredentials = true; }});
+            hls = new Hls({enableWorker: true, maxBufferLength: 180, maxMaxBufferLength: 180, backBufferLength: 30, startPosition: savedPosition, xhrSetup: (xhr) => { xhr.withCredentials = true; }});
             media.addEventListener('loadedmetadata', () => {
                 if (savedPosition > 0) media.currentTime = savedPosition;
                 if (restorePlayback && !securityStopped) media.play().catch(() => {});
@@ -181,6 +182,10 @@ function initializePlayer(player) {
     const render = () => {
         seek.value = String(position);
         seek.style.setProperty('--played', `${position / duration * 100}%`);
+        const buffered = playbackBuffer(media);
+        seek.style.setProperty('--buffered', `${Math.min(100, Math.max(position, buffered.end) / duration * 100)}%`);
+        const bufferLabel = player.querySelector('[data-buffer-ahead]');
+        if (bufferLabel) bufferLabel.textContent = buffered.ahead >= 1 ? `جاهز مسبقاً: ${formatTime(buffered.ahead)}` : 'جارٍ تحميل الفيديو…';
         seek.setAttribute('aria-valuetext', `${formatTime(position)} من ${formatTime(duration)}`);
         player.querySelector('[data-player-time]').textContent = `${formatTime(position)} / ${formatTime(duration)}`;
         player.querySelector('[data-watched-marker]').style.insetInlineStart = `${watched / duration * 100}%`;
@@ -299,8 +304,11 @@ function initializePlayer(player) {
     });
 
     if (media) {
+        media.addEventListener('progress', render);
+        media.addEventListener('emptied', render);
         media.addEventListener('timeupdate', () => {
-            position = media.currentTime || 0;
+            if (securityStopped || media.readyState < 1) return;
+            position = playbackPosition(media, position);
             duration = Number.isFinite(media.duration) ? media.duration : duration;
             render();
         });
@@ -365,7 +373,7 @@ function initializePlayer(player) {
     }, {once: true});
     document.addEventListener('visibilitychange', () => { if (document.hidden && playing) pause(); });
     window.addEventListener('pagehide', () => {
-        const finalPosition = media?.currentTime ?? position;
+        const finalPosition = securityStopped ? position : playbackPosition(media, position);
         playing = false;
         flushProgress(lessonId, {position: Math.floor(finalPosition), duration, isPlaying: false});
     }, {once: true});
@@ -379,7 +387,7 @@ function initializePlayer(player) {
         seekTo,
         pause,
         saveProgress: persist,
-        get state() { return { position, watched, completed, playing, duration, playbackRate, volume }; },
+        get state() { return { position, watched, completed, playing, duration, playbackRate, volume, bufferedAheadSeconds: playbackBuffer(media).ahead }; },
     };
     return player.academyPlayer;
 }

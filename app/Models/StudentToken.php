@@ -16,7 +16,7 @@ class StudentToken extends Model
 
     protected function casts(): array
     {
-        return ['device_limit' => 'integer', 'expires_at' => 'datetime', 'last_used_at' => 'datetime'];
+        return ['device_limit' => 'integer', 'expires_at' => 'datetime', 'last_used_at' => 'datetime', 'expiry_notified_at' => 'datetime'];
     }
 
     public function student(): BelongsTo

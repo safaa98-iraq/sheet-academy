@@ -6,6 +6,7 @@ import { initProtection, setProtection } from './protection';
 import { initPwa } from './pwa';
 import './admin-ui';
 import './publisher';
+import { initializeNotificationPolling } from './notification-polling';
 import * as tus from 'tus-js-client';
 
 const qs = (selector, root = document) => root.querySelector(selector);
@@ -126,20 +127,7 @@ window.addEventListener('pagehide', () => {
     }
 });
 
-const unreadAuditCount = qs('[data-audit-alert-count]');
-if (unreadAuditCount) {
-    const checkAuditNotifications = async () => {
-        try {
-            const response = await fetch('/admin/notifications/unread-count', {credentials: 'same-origin', headers: {'Accept': 'application/json'}});
-            if (!response.ok) return;
-            const {count} = await response.json();
-            unreadAuditCount.textContent = count > 99 ? '99+' : String(count);
-            unreadAuditCount.hidden = count < 1;
-        } catch {}
-    };
-    checkAuditNotifications();
-    window.setInterval(checkAuditNotifications, 15000);
-}
+initializeNotificationPolling();
 
 const setTheme = (theme) => {
     const dark = theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);

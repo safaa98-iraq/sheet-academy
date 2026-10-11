@@ -119,10 +119,15 @@ class StudentController extends Controller
         $this->authorize('update', $student);
         $data = $request->validated();
         DB::transaction(function () use ($student, $data): void {
-            $student->update(['name' => $data['name'], 'email' => $data['email'] ?? null, 'grade_level_id' => $data['grade_level_id'] ?? null,
+            $student = Student::whereKey($student->id)->lockForUpdate()->firstOrFail();
+            $student->fill(['name' => $data['name'], 'email' => $data['email'] ?? null, 'grade_level_id' => $data['grade_level_id'] ?? null,
                 'college' => $data['college'] ?? $student->college, 'phone' => $data['phone'] ?? $student->phone,
                 'study_grade_level_id' => $data['study_grade_level_id'] ?? $student->study_grade_level_id,
                 'subscription_expires_at' => array_key_exists('subscription_duration', $data) ? $this->subscriptionEnd($data, $student->subscription_expires_at) : $student->subscription_expires_at]);
+            if ($student->isDirty('subscription_expires_at')) {
+                $student->forceFill(['subscription_expiry_notified_at' => null]);
+            }
+            $student->save();
             $student->courses()->sync(($data['access_type'] ?? 'courses') === 'grade' ? [] : ($data['course_ids'] ?? []));
         });
 
