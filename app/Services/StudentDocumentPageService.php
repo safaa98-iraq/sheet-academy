@@ -17,7 +17,17 @@ class StudentDocumentPageService
         $source = Storage::disk('private')->path($path);
         $dimensions = @getimagesize($source);
         abort_unless($dimensions !== false && $dimensions[0] * $dimensions[1] <= 25_000_000, 422, 'حجم أبعاد الصورة غير مدعوم.');
-        $image = @imagecreatefromstring(Storage::disk('private')->get($path));
+        if ($attachment->mime_type === 'image/webp') {
+            $decoded = Process::timeout(20)->run([
+                'ffmpeg', '-nostdin', '-v', 'error', '-protocol_whitelist', 'file,pipe', '-i', $source,
+                '-vf', "scale=w='min(1600,iw)':h='min(1600,ih)':force_original_aspect_ratio=decrease",
+                '-frames:v', '1', '-f', 'image2pipe', '-c:v', 'png', 'pipe:1',
+            ]);
+            abort_unless($decoded->successful(), 422, 'تعذّر قراءة صورة WebP.');
+            $image = @imagecreatefromstring($decoded->output());
+        } else {
+            $image = @imagecreatefromstring(Storage::disk('private')->get($path));
+        }
         abort_unless($image !== false, 422, 'تعذّر قراءة الصورة.');
         $scale = min(1, 1600 / imagesx($image), 1600 / imagesy($image));
         $contentWidth = max(1, (int) round(imagesx($image) * $scale));

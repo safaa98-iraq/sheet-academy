@@ -43,7 +43,7 @@ class PublisherUploadRetryTest extends TestCase
         $student = Student::factory()->create();
         $student->courses()->attach($lesson->course);
         $this->actingAs(User::factory()->create(['is_super_admin' => true]), 'web');
-        $payload = ['client_upload_id' => '16eb8e53-e349-585f-b795-e7046a75eb78', 'attachments' => [UploadedFile::fake()->image('slide.webp')]];
+        $payload = ['client_upload_id' => '16eb8e53-e349-585f-b795-e7046a75eb78', 'attachments' => [UploadedFile::fake()->image('slide.jpg')]];
 
         $this->post(route('admin.lessons.attachments.store', $lesson), $payload, ['Accept' => 'application/json'])->assertOk();
         $this->post(route('admin.lessons.attachments.store', $lesson), $payload, ['Accept' => 'application/json'])->assertOk();
@@ -55,7 +55,7 @@ class PublisherUploadRetryTest extends TestCase
         $this->putJson(route('admin.lessons.update', $lesson), ['title' => $lesson->title, 'type' => 'text', 'publication_status' => 'published', 'notify_students' => true])->assertOk();
         $this->assertSame(1, $student->notifications()->count());
         $this->loginStudent(app(StudentTokenService::class)->issue($student)['token']);
-        $this->get($this->issueStudentViewLink('lesson', $lesson->id))->assertOk()->assertSee('slide.webp')->assertSee('guide.pdf');
+        $this->get($this->issueStudentViewLink('lesson', $lesson->id))->assertOk()->assertSee('slide.jpg')->assertSee('guide.pdf');
     }
 
     public function test_reusing_attachment_identity_with_changed_bytes_is_rejected_without_replacing_original(): void
@@ -139,5 +139,27 @@ class PublisherUploadRetryTest extends TestCase
         $this->assertNotSame(hash('sha256', $source), hash('sha256', $response->getContent()));
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
         $this->get($url.'broken', ['Accept' => 'image/jpeg'])->assertForbidden();
+    }
+
+    public function test_webp_attachment_opens_in_protected_viewer_without_php_webp_extension(): void
+    {
+        Storage::fake('private');
+        $course = Course::factory()->create(['publication_status' => 'published']);
+        $lesson = Lesson::factory()->for($course)->create(['publication_status' => 'published', 'is_published' => true]);
+        $webp = base64_decode('UklGRjIAAABXRUJQVlA4ICYAAADQAgCdASogACAAPpFEnUqlo6KhqAgAsBIJaQAAPaOgAP74TQAAAA==');
+        $this->actingAs(User::factory()->create(['is_super_admin' => true]), 'web')->post(route('admin.lessons.attachments.store', $lesson), ['attachments' => [UploadedFile::fake()->createWithContent('diagram.webp', $webp)]], ['Accept' => 'application/json'])->assertOk();
+        $attachment = $lesson->attachments()->sole();
+        $student = Student::factory()->create();
+        $student->courses()->attach($course);
+        $this->loginStudent(app(StudentTokenService::class)->issue($student)['token']);
+        parse_str(parse_url($this->issueStudentViewLink('document', $attachment->id), PHP_URL_QUERY), $query);
+        $url = URL::temporarySignedRoute('student.documents.page', now()->addMinutes(5), ['attachment' => $attachment->id, 'page' => 1, 'view' => $query['view']]);
+
+        $response = $this->get($url, ['Accept' => 'image/png'])->assertOk()->assertHeader('Content-Type', 'image/png');
+
+        $this->assertSame(400, getimagesizefromstring($response->getContent())[0]);
+        $this->assertSame(120, getimagesizefromstring($response->getContent())[1]);
+        $this->assertSame($webp, Storage::disk('private')->get($attachment->path));
+        $this->assertNotSame(hash('sha256', $webp), hash('sha256', $response->getContent()));
     }
 }
