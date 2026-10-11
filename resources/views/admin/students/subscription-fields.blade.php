@@ -1,6 +1,16 @@
-<fieldset class="student-access" data-subscription-fields><legend>مدة اشتراك الطالب</legend>
-<x-step-tip>اختر مدة تبدأ من وقت الحفظ، أو تاريخ انتهاء محدداً. بعد الانتهاء يتوقف الدخول والمشاهدة تلقائياً، ويُحفظ تقدّم الطالب للتجديد.</x-step-tip>
-<label>مدة الاشتراك<select name="subscription_duration" data-subscription-duration>@foreach(['unlimited'=>'بدون انتهاء محدد','30'=>'30 يوماً','90'=>'90 يوماً','180'=>'180 يوماً','365'=>'سنة واحدة','custom'=>'تاريخ انتهاء أحدده بنفسي'] as $value=>$label)<option value="{{ $value }}" @selected(old('subscription_duration', isset($student) && $student->subscription_expires_at ? 'custom' : 'unlimited') === (string) $value)>{{ $label }}</option>@endforeach</select></label>
-<label data-subscription-date hidden>ينتهي الاشتراك في<input type="datetime-local" name="subscription_expires_at" value="{{ old('subscription_expires_at', isset($student) ? $student->subscription_expires_at?->format('Y-m-d\TH:i') : '') }}"></label>
-@if(isset($student) && $student->subscription_expires_at)<p class="muted">الانتهاء الحالي: {{ $student->subscription_expires_at->format('Y-m-d H:i') }} {{ $student->subscriptionIsActive() ? '' : '— الاشتراك منتهٍ؛ اختر مدة جديدة لتجديده.' }}</p>@endif
+@php
+    $subscriptionMode = old('subscription_duration', isset($student) && !$student->subscription_expires_at ? 'unlimited' : 'custom');
+    $subscriptionDate = old('subscription_expires_at', isset($student) ? $student->subscription_expires_at?->copy()->timezone('Asia/Baghdad')->toDateString() : '');
+@endphp
+<fieldset class="student-access" data-subscription-fields><legend>مدة الاشتراك</legend>
+<x-step-tip>عند اختيار تاريخ جديد من التقويم ينتهي الاشتراك بنهاية اليوم المحدد (23:59 بتوقيت بغداد). بعدها يتوقف الدخول والمشاهدة تلقائياً، ويبقى التقدّم محفوظاً.</x-step-tip>
+<div class="profile-fields-grid">
+    <label for="subscription-duration">طريقة تحديد الاشتراك<select id="subscription-duration" name="subscription_duration" data-subscription-duration><option value="custom" @selected($subscriptionMode !== 'unlimited')>تاريخ انتهاء أختاره بنفسي</option><option value="unlimited" @selected($subscriptionMode === 'unlimited')>بدون تاريخ انتهاء</option></select></label>
+    <label for="subscription-date" data-subscription-date @if($subscriptionMode === 'unlimited') hidden @endif>تاريخ انتهاء الاشتراك<input id="subscription-date" type="date" dir="ltr" name="subscription_expires_at" value="{{ $subscriptionDate }}" @if($subscriptionMode !== 'unlimited') required @else disabled @endif aria-describedby="subscription-date-help"></label>
+</div>
+<p class="muted" id="subscription-date-help">لتجديد الاشتراك اختر تاريخاً لاحقاً ثم احفظ التغييرات. لإزالة تاريخ الانتهاء اختر «بدون تاريخ انتهاء».</p>
+@if(isset($student) && $student->subscription_expires_at)
+    <p class="subscription-current"><x-icon name="clock"/><span>الانتهاء الحالي: <b dir="ltr">{{ $student->subscription_expires_at->copy()->timezone('Asia/Baghdad')->format('Y-m-d H:i') }}</b> بتوقيت بغداد — {{ $student->subscriptionIsActive() ? 'الاشتراك سارٍ' : 'الاشتراك منتهٍ' }}</span></p>
+    @unless($student->subscriptionIsActive())<p class="muted">يمكنك حفظ بيانات الطالب دون تغيير هذا التاريخ؛ يبقى اشتراكه منتهياً حتى تجدّده.</p>@endunless
+@endif
 </fieldset>

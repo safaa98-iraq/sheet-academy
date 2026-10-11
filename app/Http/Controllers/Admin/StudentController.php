@@ -122,7 +122,7 @@ class StudentController extends Controller
             $student->update(['name' => $data['name'], 'email' => $data['email'] ?? null, 'grade_level_id' => $data['grade_level_id'] ?? null,
                 'college' => $data['college'] ?? $student->college, 'phone' => $data['phone'] ?? $student->phone,
                 'study_grade_level_id' => $data['study_grade_level_id'] ?? $student->study_grade_level_id,
-                'subscription_expires_at' => array_key_exists('subscription_duration', $data) ? $this->subscriptionEnd($data) : $student->subscription_expires_at]);
+                'subscription_expires_at' => array_key_exists('subscription_duration', $data) ? $this->subscriptionEnd($data, $student->subscription_expires_at) : $student->subscription_expires_at]);
             $student->courses()->sync(($data['access_type'] ?? 'courses') === 'grade' ? [] : ($data['course_ids'] ?? []));
         });
 
@@ -140,9 +140,16 @@ class StudentController extends Controller
         return redirect()->route('admin.students.index')->with('status', 'تم حذف حساب الطالب.');
     }
 
-    private function subscriptionEnd(array $data): ?Carbon
+    private function subscriptionEnd(array $data, ?Carbon $currentExpiry = null): ?Carbon
     {
         $duration = $data['subscription_duration'] ?? 'unlimited';
+        if ($duration === 'custom' && preg_match('/\A\d{4}-\d{2}-\d{2}\z/', $data['subscription_expires_at']) === 1) {
+            if ($currentExpiry?->copy()->timezone('Asia/Baghdad')->toDateString() === $data['subscription_expires_at']) {
+                return $currentExpiry;
+            }
+
+            return Carbon::parse($data['subscription_expires_at'], 'Asia/Baghdad')->endOfDay()->utc();
+        }
 
         return match ($duration) {
             'unlimited' => null,

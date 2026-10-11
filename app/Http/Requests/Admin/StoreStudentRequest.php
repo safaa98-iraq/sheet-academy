@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Rules\SubscriptionExpiry;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -29,7 +30,7 @@ class StoreStudentRequest extends FormRequest
             'phone' => ['sometimes', 'required', 'string', 'max:30', 'regex:/\A[+0-9 ()-]{7,30}\z/'],
             'study_grade_level_id' => ['sometimes', 'required', 'integer', 'exists:grade_levels,id'],
             'subscription_duration' => ['sometimes', 'required', Rule::in(['unlimited', '30', '90', '180', '365', 'custom'])],
-            'subscription_expires_at' => ['nullable', 'required_if:subscription_duration,custom', 'date', 'after:now'],
+            'subscription_expires_at' => ['exclude_unless:subscription_duration,custom', 'bail', 'required', 'date', new SubscriptionExpiry],
             'email' => ['nullable', 'email', 'max:190', Rule::unique('students', 'email')],
             'access_type' => ['sometimes', 'required', Rule::in(['grade', 'courses'])],
             'grade_level_id' => ['exclude_unless:access_type,grade', 'required', 'integer', 'exists:grade_levels,id'],
@@ -50,7 +51,8 @@ class StoreStudentRequest extends FormRequest
             'phone.required' => 'رقم الهاتف الشخصي مطلوب.',
             'phone.regex' => 'أدخل رقم هاتف صحيحاً، مثل +9647701234567.',
             'study_grade_level_id.required' => 'اختر المرحلة الدراسية للطالب.',
-            'subscription_expires_at.after' => 'اختر تاريخ انتهاء في المستقبل لتجديد الاشتراك.',
+            'subscription_expires_at.required' => 'اختر تاريخ انتهاء الاشتراك من التقويم.',
+            'subscription_expires_at.date' => 'أدخل تاريخ انتهاء صحيحاً.',
             'name.required' => 'حقل اسم الطالب مطلوب.',
             'email.email' => 'أدخل بريداً إلكترونياً صحيحاً.',
             'email.unique' => 'هذا البريد مسجّل لطالب آخر.',

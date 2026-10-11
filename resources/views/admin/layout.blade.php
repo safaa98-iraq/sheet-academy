@@ -28,6 +28,9 @@
                 @endif
             @endforeach
         </nav>
+        @if(auth('web')->user()->is_super_admin)
+            <nav class="instructor-nav" aria-label="إعدادات الحساب"><a href="{{ route('admin.profile.edit') }}" class="{{ request()->routeIs('admin.profile.*') ? 'active' : '' }}" @if(request()->routeIs('admin.profile.*')) aria-current="page" @endif><x-icon name="user"/><span>بيانات حسابي</span></a></nav>
+        @endif
         <div class="instructor-sidebar-bottom"><div class="instructor-tip"><x-icon name="book" /><b>التعلّم يبدأ بمحتوى رائع</b><p>رتّب دروسك، وتابع أثرها في رحلة طلابك.</p></div><a href="{{ route('student.login') }}"><x-icon name="arrow-left" /> دخول الطالب</a></div>
     </aside>
     <div class="instructor-workspace">
@@ -45,7 +48,7 @@
         <main class="admin-page">
             @if(session('status'))<div class="status-msg" role="status">{{ session('status') }}</div>@endif
             @if($errors->any())<div class="errors" role="alert"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-            @if(!request()->routeIs('admin.lessons.edit','admin.courses.lessons.create','admin.students.create','admin.students.edit'))<x-step-tip>{{ match(true) { request()->routeIs('admin.grade-levels.*') => 'ابدأ باسم المرحلة الدراسية؛ ستظهر عند إضافة المواد وحسابات الطلاب.', request()->routeIs('admin.courses.*') => 'اختر المرحلة، اكتب اسم المادة، ثم انشرها أو احفظها كمسودة. أضف المحاضرات من صفحة المحاضرات.', request()->routeIs('admin.students.*') => 'افتح ملف الطالب لإدارة اشتراكه ومواده ورمز دخوله، مع الاحتفاظ بتقدّمه.', request()->routeIs('admin.student-progress*') => 'اختر الطالب أو المادة لتعرف آخر محاضرة ونقطة توقفه.', request()->routeIs('admin.admins.*','admin.roles.*') => 'امنح كل عضو صلاحيات المهام التي يحتاجها فقط.', default => 'اختر القسم من القائمة؛ التغييرات التي تحفظها تظهر مباشرة في المنصة.' } }}</x-step-tip>@endif
+            @if(!request()->routeIs('admin.lessons.edit','admin.courses.lessons.create','admin.students.create','admin.students.edit','admin.profile.*'))<x-step-tip>{{ match(true) { request()->routeIs('admin.grade-levels.*') => 'ابدأ باسم المرحلة الدراسية؛ ستظهر عند إضافة المواد وحسابات الطلاب.', request()->routeIs('admin.courses.*') => 'اختر المرحلة، اكتب اسم المادة، ثم انشرها أو احفظها كمسودة. أضف المحاضرات من صفحة المحاضرات.', request()->routeIs('admin.students.*') => 'افتح ملف الطالب لإدارة اشتراكه ومواده ورمز دخوله، مع الاحتفاظ بتقدّمه.', request()->routeIs('admin.student-progress*') => 'اختر الطالب أو المادة لتعرف آخر محاضرة ونقطة توقفه.', request()->routeIs('admin.admins.*','admin.roles.*') => 'امنح كل عضو صلاحيات المهام التي يحتاجها فقط.', default => 'اختر القسم من القائمة؛ التغييرات التي تحفظها تظهر مباشرة في المنصة.' } }}</x-step-tip>@endif
             @yield('content')
         </main>
         <footer class="instructor-footer"><span>عيادة التعلّم · مساحة تصنع فرقاً</span><span>{{ $isPreview ? 'بيانات تجريبية · تحفظ تغييرات المعاينة على جهازك' : 'مساحة إدارة المحتوى والطلاب' }}</span></footer>

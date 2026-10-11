@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\CurriculumController;
 use App\Http\Controllers\Admin\GradeLevelController;
 use App\Http\Controllers\Admin\LessonController;
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\RolePermissionController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\StudentProgressController;
@@ -148,6 +149,8 @@ Route::middleware(['auth:student', 'student.token', 'student.device', 'student.a
 
 Route::middleware(['auth:web', 'admin.active'])->prefix('admin')->name('admin.')->group(function (): void {
     Route::post('/logout', [AdminSessionController::class, 'destroy'])->name('logout');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [ProfileController::class, 'update'])->middleware('throttle:6,1')->name('profile.update');
     Route::get('/', function (Request $request) {
         abort_unless($request->user('web')->hasPermissionTo('dashboard.view'), 403);
 
