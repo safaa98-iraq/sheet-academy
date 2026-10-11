@@ -8,6 +8,7 @@ import './admin-ui';
 import './publisher';
 import { initializeNotificationPolling } from './notification-polling';
 import * as tus from 'tus-js-client';
+import {retryUpload, uploadForm, uploadRetryDelays, videoUploadError, videoUploadMetadata} from './publisher-transfer';
 
 const qs = (selector, root = document) => root.querySelector(selector);
 const qsa = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -389,13 +390,17 @@ qsa('[data-video-upload]').forEach(panel => {
             fileInput.disabled = true;
             const fingerprint = await fingerprintFile(file);
             message.textContent = 'جارٍ تجهيز الرفع القابل للاستئناف…';
+            const session = await retryUpload(() => uploadForm(panel.dataset.startUrl, null, {csrf: panel.dataset.csrf, headers: {
+                'Tus-Resumable': '1.0.0', 'Upload-Length': String(file.size), 'Upload-Metadata': videoUploadMetadata(file, fingerprint),
+            }}));
             await new Promise((resolve, reject) => {
                 const upload = new tus.Upload(file, {
                     endpoint: panel.dataset.startUrl,
+                    uploadUrl: session.upload_url,
                     fingerprint: async () => `academy:${panel.dataset.startUrl}:${fingerprint}`,
                     removeFingerprintOnSuccess: true,
-                    chunkSize: 4 * 1024 * 1024,
-                    retryDelays: [0, 1000, 3000, 5000, 10000],
+                    chunkSize: 512 * 1024,
+                    retryDelays: [0, ...uploadRetryDelays],
                     metadata: {filename: file.name, fingerprint},
                     headers: {'X-CSRF-TOKEN': panel.dataset.csrf, 'Accept': 'application/json'},
                     onProgress: (bytesUploaded, bytesTotal) => {
@@ -403,14 +408,13 @@ qsa('[data-video-upload]').forEach(panel => {
                         progress.value = percent;
                         message.textContent = `رُفع ${percent}٪`;
                     },
-                    onError: reject,
+                    onShouldRetry: error => {const status = error.originalResponse?.getStatus(); return !status || [408, 409, 423, 429].includes(status) || status >= 500;},
+                    onError: error => reject(new Error(videoUploadError(error))),
                     onSuccess: resolve,
                 });
-                upload.findPreviousUploads().then(previousUploads => {
-                    if (previousUploads.length) upload.resumeFromPreviousUpload(previousUploads[0]);
-                    upload.start();
-                }).catch(reject);
+                upload.start();
             });
+            await retryUpload(() => uploadForm(session.complete_url, null, {csrf: panel.dataset.csrf}));
             message.textContent = 'اكتمل الرفع. يجري إدراج الفيديو في قائمة المعالجة.';
             let status;
             for (let count = 0; count < 120; count++) {

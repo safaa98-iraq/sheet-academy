@@ -1,11 +1,26 @@
 import * as tus from 'tus-js-client';
-import {attachmentUploadId, compressAttachment, retryUpload, uploadForm, uploadPercent, uploadRetryDelays} from './publisher-transfer';
+import {attachmentUploadId, compressAttachment, retryUpload, uploadForm, uploadPercent, uploadRetryDelays, videoUploadError, videoUploadMetadata} from './publisher-transfer';
 
 const form = document.querySelector('[data-simple-publisher]');
 if (form) {
     const button = form.querySelector('[data-publish-submit]');
     const message = form.querySelector('[data-publish-status]');
     const progress = form.querySelector('[data-publish-progress]');
+    const pause = form.querySelector('[data-upload-pause]');
+    let activeVideoUpload;
+    let paused = false;
+    pause.addEventListener('click', async () => {
+        if (!activeVideoUpload) return;
+        pause.disabled = true;
+        try {
+            if (paused) {
+                paused = false; pause.textContent = 'إيقاف الرفع مؤقتاً'; activeVideoUpload.start();
+            } else {
+                await activeVideoUpload.abort(); paused = true; pause.textContent = 'استئناف الرفع';
+                message.textContent = `الرفع متوقف عند ${progress.value}٪. الدفعات محفوظة؛ اضغط استئناف الرفع للمتابعة.`;
+            }
+        } finally {pause.disabled = false;}
+    });
     const video = form.querySelector('[data-publish-video]');
     const attachments = form.querySelector('[data-publish-attachments]');
     const compression = form.querySelector('[data-compress-images]');
@@ -104,20 +119,26 @@ if (form) {
                 const metadata = new TextEncoder().encode(`${file.name}|${file.size}|${file.lastModified}`);
                 const source = new Uint8Array(metadata.length + edges.length + last.length); source.set(metadata);source.set(edges, metadata.length);source.set(last, metadata.length+edges.length);
                 const fingerprint = [...new Uint8Array(await crypto.subtle.digest('SHA-256', source))].map(byte => byte.toString(16).padStart(2,'0')).join('');
+                const session = await retryUpload(() => uploadForm(urls.upload_url, null, {csrf, headers: {
+                    'Tus-Resumable': '1.0.0', 'Upload-Length': String(file.size), 'Upload-Metadata': videoUploadMetadata(file, fingerprint),
+                }}), {onRetry: () => {message.textContent = `الرفع ${progress.value}٪ — جارٍ استعادة جلسة رفع الفيديو؛ اترك الصفحة مفتوحة.`;}});
                 await new Promise((resolve,reject) => {
-                    const upload = new tus.Upload(file, {endpoint: urls.upload_url, fingerprint: async () => `academy:${urls.upload_url}:${fingerprint}`, removeFingerprintOnSuccess: true,
-                        chunkSize: 1024 * 1024, retryDelays: [0, ...uploadRetryDelays], metadata: {filename:file.name,fingerprint}, headers: {'X-CSRF-TOKEN':csrf,Accept:'application/json'},
-                        onProgress: (sent,bytes) => showProgress(completed + sent, total, `الرفع الإجمالي — الفيديو ${Math.floor(sent / bytes * 100)}٪`),
+                    const upload = new tus.Upload(file, {endpoint: urls.upload_url, uploadUrl: session.upload_url, fingerprint: async () => `academy:${urls.upload_url}:${fingerprint}`, removeFingerprintOnSuccess: true,
+                        chunkSize: 512 * 1024, retryDelays: [0, ...uploadRetryDelays], metadata: {filename:file.name,fingerprint}, headers: {'X-CSRF-TOKEN':csrf,Accept:'application/json'},
+                        onProgress: (sent,bytes) => {if (!paused) showProgress(completed + sent, total, `الرفع الإجمالي — الفيديو ${Math.floor(sent / bytes * 100)}٪ (${Math.floor(sent / 1024 ** 2)} / ${Math.ceil(bytes / 1024 ** 2)} ميغابايت)`);},
                         onShouldRetry: (error, attempt, options) => {
                             const status = error.originalResponse?.getStatus();
                             const retryable = !status || [408,409,423,429].includes(status) || status >= 500;
                             if (retryable && attempt < options.retryDelays.length) message.textContent = `الرفع ${progress.value}٪ — انقطع اتصال الفيديو؛ جارٍ الاستئناف من آخر دفعة محفوظة.`;
                             return retryable;
                         },
-                        onError: () => reject(new Error('تعذّر إكمال رفع الفيديو. اضغط النشر لاستئنافه؛ لا تُعاد الملفات المكتملة. عند إعادة فتح الصفحة اختر الملفات نفسها.')),
+                        onError: error => reject(new Error(videoUploadError(error))),
                         onSuccess: resolve});
-                    upload.findPreviousUploads().then(previous => {if(previous.length) upload.resumeFromPreviousUpload(previous[0]);upload.start();}).catch(reject);
+                    activeVideoUpload = upload; paused = false; pause.hidden = false; pause.disabled = false; pause.textContent = 'إيقاف الرفع مؤقتاً';
+                    upload.start();
                 });
+                activeVideoUpload = null; pause.hidden = true;
+                await transfer(session.complete_url, null);
                 savedVideo = file; uploaded = true;
             }
             if (total) {
@@ -138,6 +159,7 @@ if (form) {
             // An interrupted preparation must not discard any remaining selected files.
             if (preparedAttachments?.length !== attachments.files.length) preparedAttachments = null;
         } finally {
+            activeVideoUpload = null; pause.hidden = true; paused = false;
             busy = false; controls.forEach(([control, disabled]) => {control.disabled = disabled;});
             if (editor) editor.contentEditable = 'true';
             button.disabled = false;

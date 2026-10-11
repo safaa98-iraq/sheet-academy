@@ -212,6 +212,7 @@ Route::middleware(['auth:web', 'admin.active'])->prefix('admin')->name('admin.')
     Route::post('/lessons/{lesson}/video-uploads', [VideoUploadController::class, 'start'])->middleware(['permission:courses.manage', 'throttle:video-upload'])->name('lessons.video-uploads.start');
     Route::match(['HEAD'], '/video-uploads/{upload}', [VideoUploadController::class, 'head'])->middleware('permission:courses.manage')->name('video-uploads.head');
     Route::patch('/video-uploads/{upload}', [VideoUploadController::class, 'chunk'])->middleware(['permission:courses.manage', 'throttle:video-upload'])->name('video-uploads.chunk');
+    Route::post('/video-uploads/{upload}/complete', [VideoUploadController::class, 'complete'])->middleware(['permission:courses.manage', 'throttle:video-upload'])->name('video-uploads.complete');
     Route::get('/lessons/{lesson}/video-status', [VideoUploadController::class, 'videoStatus'])->middleware('permission:courses.view')->name('lessons.video-status');
     Route::post('/lessons/{lesson}/video-retry', [VideoUploadController::class, 'retry'])->middleware('permission:courses.manage')->name('lessons.video-retry');
     Route::put('/lessons/{lesson}/video-resolutions', [VideoUploadController::class, 'resolutions'])->middleware('permission:courses.manage')->name('lessons.video-resolutions');

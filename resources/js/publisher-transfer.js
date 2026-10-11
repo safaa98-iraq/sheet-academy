@@ -49,7 +49,7 @@ export async function attachmentUploadId(file) {
     return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 
-export function uploadForm(url, data, {csrf, onProgress = () => {}, xhrFactory = () => new XMLHttpRequest()} = {}) {
+export function uploadForm(url, data, {csrf, onProgress = () => {}, headers = {}, xhrFactory = () => new XMLHttpRequest()} = {}) {
     return new Promise((resolve, reject) => {
         const xhr = xhrFactory();
         xhr.upload.onprogress = event => {if (event.lengthComputable) onProgress(event.loaded, event.total);};
@@ -59,6 +59,7 @@ export function uploadForm(url, data, {csrf, onProgress = () => {}, xhrFactory =
         xhr.timeout = 0;
         xhr.setRequestHeader('Accept', 'application/json');
         xhr.setRequestHeader('X-CSRF-TOKEN', csrf);
+        for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value);
         const failure = () => reject(Object.assign(new Error('انقطع الاتصال. سنحاول استكمال الرفع تلقائياً.'), {retryable: true}));
         xhr.onerror = failure; xhr.ontimeout = failure;
         xhr.onabort = () => reject(new Error('توقف الرفع. اضغط النشر لاستكماله.'));
@@ -76,6 +77,26 @@ export function uploadForm(url, data, {csrf, onProgress = () => {}, xhrFactory =
         };
         xhr.send(data);
     });
+}
+
+export function videoUploadMetadata(file, fingerprint) {
+    const encode = value => btoa(Array.from(new TextEncoder().encode(value), byte => String.fromCharCode(byte)).join(''));
+    return `filename ${encode(file.name)},fingerprint ${encode(fingerprint)}`;
+}
+
+export function videoUploadError(error) {
+    const response = error.originalResponse;
+    const status = response?.getStatus();
+    if ([401, 403, 419].includes(status)) return 'انتهت الجلسة أو تغيرت الصلاحية. أعد تسجيل الدخول ثم اختر الملف نفسه للاستئناف.';
+    if (status === 413) return 'رفض السيرفر حجم الدفعة. أعد المحاولة أو تحقق من حدود الرفع في الخدمة.';
+    if (status && status < 500) {
+        try {
+            const data = JSON.parse(response.getBody());
+            const message = Object.values(data.errors || {}).flat()[0] || data.message;
+            if (typeof message === 'string' && /[\u0600-\u06ff]/.test(message)) return message;
+        } catch {}
+    }
+    return 'تعذّر إكمال الاتصال. اضغط النشر للاستئناف من آخر دفعة محفوظة، أو اختر الملف نفسه بعد إعادة فتح المحاضرة.';
 }
 
 export async function retryUpload(operation, {onRetry = () => {}, wait = delay => new Promise(resolve => setTimeout(resolve, delay)), delays = uploadRetryDelays} = {}) {

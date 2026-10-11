@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {attachmentUploadId, compressAttachment, imageUploadDimensions, retryUpload, uploadForm, uploadPercent} from '../../resources/js/publisher-transfer.js';
+import {attachmentUploadId, compressAttachment, imageUploadDimensions, retryUpload, uploadForm, uploadPercent, videoUploadError, videoUploadMetadata} from '../../resources/js/publisher-transfer.js';
 
 test('upload percentage follows bytes and reserves 100 until server confirms the save', () => {
     assert.equal(uploadPercent(0, 2000), 0);
@@ -92,4 +92,31 @@ test('bounded backoff reuses the operation and stops immediately on permission f
     calls = 0;
     await assert.rejects(retryUpload(async () => {calls++; throw Object.assign(Error('offline'), {retryable: true});}, {delays: [10, 20], wait: async () => {}}), /offline/);
     assert.equal(calls, 3);
+});
+
+test('TUS session negotiation sends resumable headers with CSRF and no multipart body', async () => {
+    const xhr = xhrFixture({response: '{"upload_url":"/admin/video-uploads/id","offset":524288}'});
+    const response = await uploadForm('/admin/lessons/1/video-uploads', null, {csrf: 'csrf-example', headers: {'Tus-Resumable': '1.0.0', 'Upload-Length': '30000000'}, xhrFactory: () => xhr});
+    assert.equal(response.offset, 524288);
+    assert.equal(xhr.headers['Tus-Resumable'], '1.0.0');
+    assert.equal(xhr.headers['Upload-Length'], '30000000');
+    assert.equal(xhr.headers['X-CSRF-TOKEN'], 'csrf-example');
+    assert.equal(xhr.data, null);
+});
+
+
+test('video metadata preserves Arabic filenames as UTF-8 base64', () => {
+    const metadata = videoUploadMetadata({name: 'تشريح الأسنان.mp4'}, 'a'.repeat(64));
+    const fields = Object.fromEntries(metadata.split(',').map(value => value.split(' ')));
+    assert.equal(Buffer.from(fields.filename, 'base64').toString('utf8'), 'تشريح الأسنان.mp4');
+    assert.equal(Buffer.from(fields.fingerprint, 'base64').toString('utf8'), 'a'.repeat(64));
+});
+
+test('video failure shows the server validation reason and hides HTML and internal failures', () => {
+    const response = (status, body) => ({originalResponse: {getStatus: () => status, getBody: () => body}});
+    assert.equal(videoUploadError(response(422, '{"errors":{"video":["ملف الفيديو غير صالح."]}}')), 'ملف الفيديو غير صالح.');
+    assert.match(videoUploadError(response(419, '{}')), /تسجيل الدخول/);
+    assert.match(videoUploadError(response(413, '{}')), /حجم الدفعة/);
+    assert.doesNotMatch(videoUploadError(response(500, '{"message":"SQLSTATE: secret"}')), /SQLSTATE|secret/);
+    assert.match(videoUploadError(response(502, '<html>Bad gateway</html>')), /آخر دفعة محفوظة/);
 });
