@@ -212,7 +212,7 @@ class FinalSecurityAuditTest extends TestCase
         $second = Student::factory()->create(['name' => 'طالب']);
         $audit = app(StudentAuditService::class);
         $this->assertNotSame($audit->watermarkText($first), $audit->watermarkText($second));
-        $this->assertMatchesRegularExpression('/^[A-F0-9]{16}/', $audit->watermarkText($first));
+        $this->assertMatchesRegularExpression('/^طالب · [A-F0-9]{16}$/', $audit->watermarkText($first));
     }
 
     public function test_delegated_admin_cannot_assign_permissions_they_do_not_hold(): void

@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 
@@ -54,6 +55,9 @@ class AppServiceProvider extends ServiceProvider
         });
         RateLimiter::for('student-progress', fn (Request $request): Limit => Limit::perMinute(30)->by(($request->user('student')?->id ?? 'guest').'|'.$request->ip()));
         RateLimiter::for('student-media', fn (Request $request): Limit => Limit::perMinute(240)->by(($request->user('student')?->id ?? 'guest').'|'.$request->ip()));
+        View::composer('student.layout', function ($view): void {
+            $view->with('studentUnreadCount', auth('student')->user()?->unreadNotifications()->count() ?? 0);
+        });
         Gate::policy(Student::class, StudentPolicy::class);
         Gate::policy(Course::class, CoursePolicy::class);
         Gate::policy(Lesson::class, LessonPolicy::class);

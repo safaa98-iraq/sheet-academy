@@ -26,7 +26,7 @@ class StudentTokenAuthController extends Controller
             })
             ->first();
 
-        if ($studentToken === null || $studentToken->student->status !== 'active') {
+        if ($studentToken === null || $studentToken->student->status !== 'active' || ! $studentToken->student->subscriptionIsActive()) {
             $audit->recordFailedToken($plainTextToken, $request);
 
             return back()->withErrors(['token' => 'رمز الدخول غير صالح أو منتهي.'])->onlyInput('');

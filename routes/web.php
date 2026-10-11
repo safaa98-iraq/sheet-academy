@@ -16,6 +16,7 @@ use App\Http\Controllers\Internal\VideoProcessingController;
 use App\Http\Controllers\LessonAttachmentController;
 use App\Http\Controllers\Student\DocumentViewerController;
 use App\Http\Controllers\Student\LessonProgressController;
+use App\Http\Controllers\Student\NotificationController;
 use App\Http\Controllers\Student\PlayerPreferenceController;
 use App\Http\Controllers\Student\StudentActivityController;
 use App\Http\Controllers\Student\StudentAgreementController;
@@ -45,6 +46,8 @@ Route::middleware('guest:web')->group(function (): void {
 });
 
 Route::middleware(['auth:student', 'student.token', 'student.device', 'student.agreement'])->group(function (): void {
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('student.notifications');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'update'])->whereUuid('notification')->name('student.notifications.read');
     Route::get('/student-agreement', [StudentAgreementController::class, 'show'])->name('student.agreement.show');
     Route::post('/student-agreement', [StudentAgreementController::class, 'accept'])->name('student.agreement.accept');
     Route::post('/student/view-links', [StudentViewLinkController::class, 'issue'])->middleware('throttle:student-activity')->name('student.view-links.issue');

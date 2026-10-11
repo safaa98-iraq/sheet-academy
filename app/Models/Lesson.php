@@ -19,11 +19,11 @@ class Lesson extends Model
 
     use SoftDeletes;
 
-    protected $fillable = ['course_id', 'title', 'slug', 'type', 'duration_seconds', 'position', 'is_published', 'description', 'body_html', 'publication_status', 'scheduled_at', 'video_reference', 'video_status', 'available_resolutions'];
+    protected $fillable = ['course_id', 'title', 'slug', 'type', 'duration_seconds', 'position', 'is_published', 'description', 'body_html', 'publication_status', 'scheduled_at', 'video_reference', 'video_status', 'available_resolutions', 'notify_students'];
 
     protected function casts(): array
     {
-        return ['is_published' => 'boolean', 'scheduled_at' => 'datetime', 'available_resolutions' => 'array'];
+        return ['is_published' => 'boolean', 'scheduled_at' => 'datetime', 'available_resolutions' => 'array', 'notify_students' => 'boolean', 'notified_at' => 'datetime'];
     }
 
     public function scopeVisibleForStudents(Builder $query): Builder

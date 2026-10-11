@@ -25,7 +25,11 @@ class StudentTokenLoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'token' => ['required', 'string', 'min:32', 'max:128'],
+            'token' => ['required', 'string', 'min:8', 'max:128', function (string $attribute, mixed $value, \Closure $fail): void {
+                if (is_string($value) && strlen($value) > 8 && str_starts_with($value, 'SH-')) {
+                    $fail('هذا رمز معاينة تجريبي. اطلب رمز دخول فعلياً من إدارة المنصة.');
+                }
+            }],
         ];
     }
 

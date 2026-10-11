@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Internal;
 
 use App\Http\Controllers\Controller;
 use App\Models\LessonVideo;
+use App\Services\LessonPublicationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -48,6 +49,8 @@ class VideoProcessingController extends Controller
             'available_resolutions' => $availableResolutions,
             'duration_seconds' => $data['duration_seconds'] ?? $lesson->duration_seconds,
         ]);
+
+        app(LessonPublicationService::class)->notify($lesson);
 
         return response()->json(['ok' => true]);
     }

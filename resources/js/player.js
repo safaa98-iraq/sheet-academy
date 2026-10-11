@@ -352,14 +352,6 @@ function initializePlayer(player) {
     };
     if (player.dataset.preview !== 'true' && stage) guardWatermark({container: stage, selector: '[data-player-watermark]', text: watermarkText, onTamper: reportTamper});
     media?.addEventListener('webkitbeginfullscreen', () => { stopProtectedPlayback(); announce('استخدم ملء الشاشة الخاص بالمشغّل لإبقاء بصمتك ظاهرة.'); });
-    window.setInterval(() => {
-        const watermark = player.querySelector('[data-player-watermark]');
-        if (!watermark) return;
-        const horizontal = Math.max(0, 92 - watermark.offsetWidth / stage.clientWidth * 100);
-        const vertical = Math.max(0, 82 - watermark.offsetHeight / stage.clientHeight * 100);
-        watermark.style.insetInlineStart = `${4 + Math.random() * horizontal}%`;
-        watermark.style.top = `${8 + Math.random() * vertical}%`;
-    }, 10000);
     auditHeartbeatTimer = window.setInterval(() => {
         if (playing && window.reportStudentActivity) window.reportStudentActivity('watch_heartbeat', lessonId);
     }, 60000);
@@ -431,10 +423,10 @@ function initializeLessonPage(page, player) {
     const setCurriculumOpen = (open, focus = false) => {
         page.classList.toggle('curriculum-is-closed', !open);
         toggle.setAttribute('aria-expanded', String(open));
-        document.body.classList.toggle('curriculum-drawer-open', open && mobileCurriculum.matches);
+        document.body.classList.remove('curriculum-drawer-open');
         if (open && mobileCurriculum.matches) {
-            sidebar.setAttribute('role', 'dialog');
-            sidebar.setAttribute('aria-modal', 'true');
+            sidebar.setAttribute('role', 'region');
+            sidebar.removeAttribute('aria-modal');
             if (focus) page.querySelector('[data-curriculum-close]').focus();
         } else {
             sidebar.removeAttribute('role');
@@ -450,12 +442,7 @@ function initializeLessonPage(page, player) {
     document.addEventListener('keydown', (event) => {
         if (!mobileCurriculum.matches || page.classList.contains('curriculum-is-closed')) return;
         if (event.key === 'Escape') { event.preventDefault(); setCurriculumOpen(false, true); }
-        if (event.key === 'Tab') {
-            const controls = [...sidebar.querySelectorAll('button, a, summary')].filter(element => element.getClientRects().length);
-            const first = controls[0], last = controls.at(-1);
-            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
-        }
+
     });
 
     const tabs = [...page.querySelectorAll('[data-lesson-tab]')];
@@ -589,7 +576,17 @@ document.querySelectorAll('[data-video-pending-url]').forEach(panel => {
             const response = await fetch(panel.dataset.videoPendingUrl, {credentials: 'same-origin', headers: {'Accept': 'application/json'}, cache: 'no-store'});
             if (!response.ok) { clearInterval(timer); return; }
             const {status} = await response.json();
-            if (status === 'ready') { clearInterval(timer); location.reload(); }
+            if (status === 'ready') {
+                if (document.body.dataset.preview === 'true') { clearInterval(timer); location.reload(); return; }
+                const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+                const link = await fetch(document.body.dataset.viewLinkIssueUrl, {
+                    method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf},
+                    body: JSON.stringify({target_type: 'lesson', target_id: Number(panel.dataset.lessonId)}),
+                });
+                if (!link.ok) { clearInterval(timer); panel.querySelector('p').textContent = 'انتهت جلسة العرض. افتح المحاضرة مجدداً من موادك.'; return; }
+                clearInterval(timer);
+                location.assign((await link.json()).url);
+            }
             else if (status === 'failed') { clearInterval(timer); panel.querySelector('.eyebrow').textContent = 'تعذّر تجهيز الفيديو'; }
         } catch { /* Retry on the next tick after a temporary connection failure. */ }
     }, 5000);

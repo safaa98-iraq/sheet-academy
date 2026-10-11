@@ -71,7 +71,7 @@ class StudentAuditService
     {
         $identifier = strtoupper(substr(hash_hmac('sha256', 'watermark:'.$student->id, (string) config('app.key')), 0, 16));
 
-        return $identifier.' · رقم الطالب '.str_pad((string) $student->id, 6, '0', STR_PAD_LEFT).' · '.$student->name;
+        return $student->name.' · '.$identifier;
     }
 
     private function notifyAdminsWhenNeeded(?Student $student, string $event, Request $request, int $points, int $priorPoints): void

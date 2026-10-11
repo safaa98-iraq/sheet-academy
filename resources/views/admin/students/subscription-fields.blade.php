@@ -1,0 +1,6 @@
+<fieldset class="student-access" data-subscription-fields><legend>مدة اشتراك الطالب</legend>
+<x-step-tip>اختر مدة تبدأ من وقت الحفظ، أو تاريخ انتهاء محدداً. بعد الانتهاء يتوقف الدخول والمشاهدة تلقائياً، ويُحفظ تقدّم الطالب للتجديد.</x-step-tip>
+<label>مدة الاشتراك<select name="subscription_duration" data-subscription-duration>@foreach(['unlimited'=>'بدون انتهاء محدد','30'=>'30 يوماً','90'=>'90 يوماً','180'=>'180 يوماً','365'=>'سنة واحدة','custom'=>'تاريخ انتهاء أحدده بنفسي'] as $value=>$label)<option value="{{ $value }}" @selected(old('subscription_duration', isset($student) && $student->subscription_expires_at ? 'custom' : 'unlimited') === (string) $value)>{{ $label }}</option>@endforeach</select></label>
+<label data-subscription-date hidden>ينتهي الاشتراك في<input type="datetime-local" name="subscription_expires_at" value="{{ old('subscription_expires_at', isset($student) ? $student->subscription_expires_at?->format('Y-m-d\TH:i') : '') }}"></label>
+@if(isset($student) && $student->subscription_expires_at)<p class="muted">الانتهاء الحالي: {{ $student->subscription_expires_at->format('Y-m-d H:i') }} {{ $student->subscriptionIsActive() ? '' : '— الاشتراك منتهٍ؛ اختر مدة جديدة لتجديده.' }}</p>@endif
+</fieldset>

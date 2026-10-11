@@ -5,6 +5,7 @@ import { initViewers } from './viewer';
 import { initProtection, setProtection } from './protection';
 import { initPwa } from './pwa';
 import './admin-ui';
+import './publisher';
 import * as tus from 'tus-js-client';
 
 const qs = (selector, root = document) => root.querySelector(selector);
@@ -345,6 +346,8 @@ qsa('[data-video-upload]').forEach(panel => {
         const status = await response.json();
         statusText.dataset.status = status.status;
         statusText.textContent = ({not_uploaded: 'لم يُرفع', queued: 'بانتظار المعالجة', processing: 'قيد المعالجة', ready: 'جاهز', failed: 'فشل'})[status.status] || status.status;
+        const processedLabel = qs('[data-processed-video]');
+        if (processedLabel) processedLabel.textContent = statusText.textContent;
         resolutionBox.hidden = status.status !== 'ready';
         retryButton.hidden = status.status !== 'failed';
         if (status.error) message.textContent = status.error;
@@ -447,7 +450,7 @@ qsa('[data-video-upload]').forEach(panel => {
         } catch (error) { message.textContent = error.message; }
         finally { retryButton.disabled = false; }
     });
-    qs('[data-save-video-resolutions]', panel).addEventListener('click', async event => {
+    qs('button[data-save-video-resolutions]', panel)?.addEventListener('click', async event => {
         const button = event.currentTarget;
         button.disabled = true;
         try {

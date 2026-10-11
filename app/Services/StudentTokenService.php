@@ -20,7 +20,9 @@ class StudentTokenService
             $student->tokens()->whereIn('status', ['active', 'frozen', 'suspended'])->update(['status' => 'revoked']);
             $student->devices()->whereNull('revoked_at')->update(['revoked_at' => now(), 'view_link_hash' => null]);
 
-            $plainTextToken = bin2hex(random_bytes(32));
+            do {
+                $plainTextToken = $this->generateToken();
+            } while (StudentToken::where('token_hash', hash('sha256', $plainTextToken))->exists());
             $record = $student->tokens()->create([
                 'token_hash' => hash('sha256', $plainTextToken),
                 'status' => 'active',
@@ -31,5 +33,23 @@ class StudentTokenService
 
             return ['token' => $plainTextToken, 'record' => $record];
         });
+    }
+
+    private function generateToken(): string
+    {
+        $letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+        $digits = '23456789';
+        $symbols = '!@#$%*+-_';
+        $alphabet = $letters.$digits.$symbols;
+        $characters = [$letters[random_int(0, strlen($letters) - 1)], $digits[random_int(0, strlen($digits) - 1)], $symbols[random_int(0, strlen($symbols) - 1)]];
+        for ($index = 3; $index < 8; $index++) {
+            $characters[] = $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+        for ($index = 7; $index > 0; $index--) {
+            $other = random_int(0, $index);
+            [$characters[$index], $characters[$other]] = [$characters[$other], $characters[$index]];
+        }
+
+        return implode('', $characters);
     }
 }
