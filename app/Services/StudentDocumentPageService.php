@@ -11,7 +11,7 @@ use RuntimeException;
 
 class StudentDocumentPageService
 {
-    public function watermarkedPage(LessonAttachment $attachment, int $page, Student $student): string
+    public function watermarkedPage(LessonAttachment $attachment, int $page, Student $student, bool $compressed = false): string
     {
         $path = $this->pagePath($attachment, $page);
         $source = Storage::disk('private')->path($path);
@@ -36,6 +36,14 @@ class StudentDocumentPageService
         ob_start();
         imagepng($canvas);
         $bytes = (string) ob_get_clean();
+        if ($compressed) {
+            ob_start();
+            imagejpeg($canvas, null, 88);
+            $jpegBytes = (string) ob_get_clean();
+            if (strlen($jpegBytes) < strlen($bytes)) {
+                $bytes = $jpegBytes;
+            }
+        }
         imagedestroy($image);
         imagedestroy($canvas);
 

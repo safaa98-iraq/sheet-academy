@@ -45,8 +45,11 @@ class DocumentViewerController extends Controller
     {
         abort_unless($attachment->lesson !== null && Gate::forUser($request->user('student'))->allows('viewByStudent', $attachment->lesson), 404);
 
-        return response($pages->watermarkedPage($attachment, $page, $request->user('student')), 200, [
-            'Content-Type' => 'image/png', 'Content-Disposition' => 'inline', 'Cache-Control' => 'private, no-store, max-age=0',
+        $compressed = $request->hasHeader('Accept') && $request->accepts('image/jpeg');
+        $bytes = $pages->watermarkedPage($attachment, $page, $request->user('student'), $compressed);
+
+        return response($bytes, 200, [
+            'Content-Type' => str_starts_with($bytes, "\xFF\xD8") ? 'image/jpeg' : 'image/png', 'Vary' => 'Accept', 'Content-Disposition' => 'inline', 'Cache-Control' => 'private, no-store, max-age=0',
             'X-Content-Type-Options' => 'nosniff', 'Referrer-Policy' => 'same-origin',
         ]);
     }

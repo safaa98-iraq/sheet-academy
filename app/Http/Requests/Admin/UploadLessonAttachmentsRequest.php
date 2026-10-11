@@ -25,7 +25,8 @@ class UploadLessonAttachmentsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'attachments' => ['required', 'array', 'min:1', 'max:10'],
+            'client_upload_id' => ['sometimes', 'uuid'],
+            'attachments' => ['required', 'array', 'min:1', $this->filled('client_upload_id') ? 'max:1' : 'max:10'],
             'attachments.*' => self::fileRules(),
         ];
     }

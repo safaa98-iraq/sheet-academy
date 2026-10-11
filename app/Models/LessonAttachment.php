@@ -10,7 +10,7 @@ class LessonAttachment extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['lesson_id', 'disk', 'path', 'original_name', 'mime_type', 'size_bytes'];
+    protected $fillable = ['lesson_id', 'disk', 'path', 'original_name', 'mime_type', 'size_bytes', 'client_upload_id', 'upload_checksum'];
 
     public function lesson(): BelongsTo
     {

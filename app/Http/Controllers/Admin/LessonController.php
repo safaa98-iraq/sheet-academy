@@ -58,9 +58,19 @@ class LessonController extends Controller
     public function store(StoreLessonRequest $request, Course $course): RedirectResponse|JsonResponse
     {
         $this->authorize('update', $course);
-        $data = $request->safe()->except(['attachments', 'publish_course', 'enabled_resolutions']);
+        $data = $request->safe()->except(['attachments', 'publish_course', 'enabled_resolutions', 'creation_key']);
+        $creationKey = $request->filled('creation_key') ? hash('sha256', $request->user('web')->id.'|'.$course->id.'|'.$request->validated('creation_key')) : null;
         $publicationStatus = $data['publication_status'] ?? (($data['is_published'] ?? false) ? 'published' : 'draft');
-        $lesson = DB::transaction(function () use ($course, $data, $publicationStatus, $request): Lesson {
+        $lesson = DB::transaction(function () use ($course, $data, $publicationStatus, $request, $creationKey): Lesson {
+            Course::whereKey($course->id)->lockForUpdate()->firstOrFail();
+            if ($creationKey !== null) {
+                $existing = $course->lessons()->withTrashed()->where('creation_key', $creationKey)->first();
+                if ($existing !== null) {
+                    abort_if($existing->trashed(), 409, 'المحاضرة السابقة محذوفة. افتح نموذج محاضرة جديدة.');
+
+                    return $existing;
+                }
+            }
             $lesson = $course->lessons()->create([
                 ...$data,
                 'slug' => Str::slug($data['title']).'-'.Str::lower(Str::random(5)),
@@ -70,6 +80,7 @@ class LessonController extends Controller
                 'scheduled_at' => $publicationStatus === 'scheduled' ? ($data['scheduled_at'] ?? null) : null,
                 'is_published' => $publicationStatus === 'published',
             ]);
+            $lesson->forceFill(['creation_key' => $creationKey])->save();
             $this->attachToDefaultSection($course, $lesson);
             app(LessonAttachmentService::class)->store($lesson, $request->validated('attachments', []));
 
@@ -111,7 +122,7 @@ class LessonController extends Controller
     {
         abort_if($lesson->course === null, 404);
         $this->authorize('update', $lesson->course);
-        $data = $request->safe()->except(['attachments', 'publish_course', 'enabled_resolutions']);
+        $data = $request->safe()->except(['attachments', 'publish_course', 'enabled_resolutions', 'creation_key']);
         if (isset($data['title'])) {
             $data['slug'] = Str::slug($data['title']).'-'.Str::lower(Str::random(5));
         }
@@ -181,6 +192,7 @@ class LessonController extends Controller
     private function editorUrls(Lesson $lesson): array
     {
         return ['lesson_id' => $lesson->id, 'edit_url' => route('admin.lessons.edit', $lesson), 'update_url' => route('admin.lessons.update', $lesson),
+            'attachments_url' => route('admin.lessons.attachments.store', $lesson),
             'upload_url' => route('admin.lessons.video-uploads.start', $lesson), 'status_url' => route('admin.lessons.video-status', $lesson)];
     }
 

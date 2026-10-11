@@ -1,4 +1,5 @@
 import * as tus from 'tus-js-client';
+import {attachmentUploadId, compressAttachment, retryUpload, uploadForm, uploadPercent, uploadRetryDelays} from './publisher-transfer';
 
 const form = document.querySelector('[data-simple-publisher]');
 if (form) {
@@ -7,16 +8,25 @@ if (form) {
     const progress = form.querySelector('[data-publish-progress]');
     const video = form.querySelector('[data-publish-video]');
     const attachments = form.querySelector('[data-publish-attachments]');
+    const compression = form.querySelector('[data-compress-images]');
+    const compressionSummary = form.querySelector('[data-compression-summary]');
+    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    const creationKey = crypto.randomUUID();
+    const savedAttachments = new Set();
+    let preparedAttachments;
     let busy = false;
-    let filesSaved = false;
-    let videoSaved = false;
     let savedVideo = null;
     let urls;
-    const csrf = document.querySelector('meta[name="csrf-token"]').content;
-    const save = async (data) => {
-        const response = await fetch(form.action, {method: 'POST', body: data, credentials: 'same-origin', headers: {'Accept': 'application/json', 'X-CSRF-TOKEN': csrf}});
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(response.status === 419 ? 'انتهت جلسة الإدارة. أعد تسجيل الدخول ثم استأنف العمل.' : Object.values(result.errors || {}).flat()[0] || result.message || 'تعذّر الحفظ. حاول مجدداً.');
+    const showProgress = (sent, total, label, complete = false) => {
+        progress.hidden = false;
+        progress.value = uploadPercent(sent, total, complete);
+        message.textContent = `${label}: ${progress.value}٪`;
+    };
+    const transfer = (url, data, onProgress) => retryUpload(() => uploadForm(url, data, {csrf, onProgress}), {
+        onRetry: (attempt, delay) => {message.textContent = `الرفع ${progress.value}٪ — الاتصال ضعيف؛ إعادة المحاولة ${attempt} بعد ${delay / 1000} ثانية. اترك الصفحة مفتوحة.`;},
+    });
+    const save = async (data, onProgress) => {
+        const result = await transfer(form.action, data, onProgress);
         form.action = result.update_url;
         if (!form.querySelector('[name="_method"]')) {
             const method = document.createElement('input'); method.type = 'hidden'; method.name = '_method'; method.value = 'PUT'; form.append(method);
@@ -28,42 +38,67 @@ if (form) {
         form.dispatchEvent(new Event('lecture:sync'));
         const data = new FormData(form);
         data.delete('attachments[]');
+        data.set('creation_key', creationKey);
         if (!video.files[0] && form.querySelector('[data-video-resolutions]:not([hidden])')) {
             const selected = [...form.querySelectorAll('[data-video-resolution]:checked')];
             if (!selected.length) throw new Error('فعّل دقة واحدة على الأقل للفيديو.');
             selected.forEach(input => data.append('enabled_resolutions[]', input.value));
         }
-        if (!filesSaved) [...attachments.files].forEach(file => data.append('attachments[]', file));
         return data;
     };
+    const cloneData = data => {const clone = new FormData(); for (const [key, value] of data) clone.append(key, value); return clone;};
     video.addEventListener('change', () => {
-        savedVideo = null; videoSaved = false;
+        savedVideo = null;
         form.querySelector('[data-publish-video-name]').textContent = video.files[0]?.name || 'بدون فيديو جديد';
     });
+    const resetAttachments = () => {preparedAttachments = null; compressionSummary.textContent = '';};
+    compression.addEventListener('change', resetAttachments);
     attachments.addEventListener('change', () => {
-        filesSaved = false;
+        resetAttachments();
         form.querySelector('[data-publish-attachments-name]').textContent = [...attachments.files].map(file => file.name).join('، ') || 'بدون مرفقات جديدة';
     });
     form.addEventListener('submit', async event => {
         event.preventDefault();
         if (busy || !form.reportValidity()) return;
-        busy = true; button.disabled = true; message.classList.remove('has-error');
+        busy = true; message.classList.remove('has-error');
+        const controls = [...form.querySelectorAll('input, select, textarea, button')].map(control => [control, control.disabled]);
+        const editor = form.querySelector('[data-rich-editor]');
         let uploaded = false;
         try {
             const file = video.files[0];
+            const selectedAttachments = [...attachments.files];
             if (file?.size > 10 * 1024 ** 3) throw new Error('الحد الأقصى للفيديو 10 جيجابايت.');
-            if (attachments.files.length > 10 || [...attachments.files].some(file => file.size > 20 * 1024 ** 2)) throw new Error('اختر حتى 10 مرفقات، بحجم 20 ميغابايت لكل ملف.');
-            const data = prepare();
-            const desiredStatus = data.get('publication_status');
-            const scheduledAt = data.get('scheduled_at');
-            // Keep a new/replaced video private until every selected byte has arrived.
-            if (file && !videoSaved) { data.set('publication_status', 'draft'); data.delete('scheduled_at'); }
-            message.textContent = 'جارٍ حفظ المحاضرة والمرفقات…';
-            urls = await save(data); filesSaved = true;
-            if (file && (!videoSaved || savedVideo !== file)) {
-                progress.hidden = false;
-                video.disabled = true; attachments.disabled = true;
-                message.textContent = 'جارٍ رفع الفيديو؛ اترك الصفحة مفتوحة.';
+            if (selectedAttachments.length > 10 || selectedAttachments.some(file => file.size > 20 * 1024 ** 2)) throw new Error('اختر حتى 10 مرفقات، بحجم 20 ميغابايت لكل ملف.');
+            const content = prepare();
+            const compressImages = compression.checked;
+            controls.forEach(([control]) => {control.disabled = true;});
+            if (editor) editor.contentEditable = 'false';
+            if (!preparedAttachments) {
+                preparedAttachments = [];
+                for (const [index, original] of selectedAttachments.entries()) {
+                    showProgress(index, selectedAttachments.length, 'تجهيز وضغط الصور');
+                    const optimized = compressImages ? await compressAttachment(original) : original;
+                    preparedAttachments.push({file: optimized, id: await attachmentUploadId(optimized)});
+                }
+                const before = selectedAttachments.reduce((sum, item) => sum + item.size, 0);
+                const after = preparedAttachments.reduce((sum, item) => sum + item.file.size, 0);
+                compressionSummary.textContent = after < before ? `توفير ${Math.round((1 - after / before) * 100)}٪ من حجم المرفقات قبل الرفع. PDF محفوظ بجودته الأصلية.` : 'المرفقات جاهزة؛ يُحفظ الأصل إذا لم يقل حجمه بالضغط.';
+            }
+            const total = preparedAttachments.reduce((sum, item) => sum + item.file.size, 0) + (file?.size || 0);
+            let completed = preparedAttachments.filter(item => savedAttachments.has(item.id)).reduce((sum, item) => sum + item.file.size, 0) + (savedVideo === file ? file?.size || 0 : 0);
+            const initial = cloneData(content);
+            // Do not publish or notify until all selected media has been persisted.
+            if (total) {initial.set('publication_status', 'draft'); initial.delete('scheduled_at');}
+            showProgress(completed, total, total ? 'الرفع الإجمالي' : 'حفظ المحاضرة');
+            urls = await save(initial, (sent, bytes) => {if (!total) showProgress(sent, bytes, 'حفظ المحاضرة');});
+            for (const [index, item] of preparedAttachments.entries()) {
+                if (savedAttachments.has(item.id)) continue;
+                const data = new FormData(); data.append('attachments[]', item.file); data.append('client_upload_id', item.id);
+                await transfer(urls.attachments_url, data, (sent, bytes) => showProgress(completed + item.file.size * sent / bytes, total, `الرفع الإجمالي — المرفق ${index + 1}/${preparedAttachments.length}`));
+                savedAttachments.add(item.id); completed += item.file.size;
+                showProgress(completed, total, 'الرفع الإجمالي');
+            }
+            if (file && savedVideo !== file) {
                 const edges = new Uint8Array(await file.slice(0, 1048576).arrayBuffer());
                 const last = new Uint8Array(await file.slice(Math.max(0, file.size - 1048576)).arrayBuffer());
                 const metadata = new TextEncoder().encode(`${file.name}|${file.size}|${file.lastModified}`);
@@ -71,27 +106,42 @@ if (form) {
                 const fingerprint = [...new Uint8Array(await crypto.subtle.digest('SHA-256', source))].map(byte => byte.toString(16).padStart(2,'0')).join('');
                 await new Promise((resolve,reject) => {
                     const upload = new tus.Upload(file, {endpoint: urls.upload_url, fingerprint: async () => `academy:${urls.upload_url}:${fingerprint}`, removeFingerprintOnSuccess: true,
-                        chunkSize: 4 * 1024 * 1024, retryDelays: [0,1000,3000,5000,10000],metadata: {filename:file.name,fingerprint},headers: {'X-CSRF-TOKEN':csrf,Accept:'application/json'},
-                        onProgress: (sent,total) => { progress.value = Math.floor(sent/total*100); message.textContent = `رفع الفيديو: ${progress.value}٪ — تم حفظ المرفقات`; },
-                        onError: () => reject(new Error('تعذّر إكمال رفع الفيديو. اختر الملف نفسه واضغط النشر لاستئنافه؛ المحاضرة والمرفقات محفوظة كمسودة.')),
+                        chunkSize: 1024 * 1024, retryDelays: [0, ...uploadRetryDelays], metadata: {filename:file.name,fingerprint}, headers: {'X-CSRF-TOKEN':csrf,Accept:'application/json'},
+                        onProgress: (sent,bytes) => showProgress(completed + sent, total, `الرفع الإجمالي — الفيديو ${Math.floor(sent / bytes * 100)}٪`),
+                        onShouldRetry: (error, attempt, options) => {
+                            const status = error.originalResponse?.getStatus();
+                            const retryable = !status || [408,409,423,429].includes(status) || status >= 500;
+                            if (retryable && attempt < options.retryDelays.length) message.textContent = `الرفع ${progress.value}٪ — انقطع اتصال الفيديو؛ جارٍ الاستئناف من آخر دفعة محفوظة.`;
+                            return retryable;
+                        },
+                        onError: () => reject(new Error('تعذّر إكمال رفع الفيديو. اضغط النشر لاستئنافه؛ لا تُعاد الملفات المكتملة. عند إعادة فتح الصفحة اختر الملفات نفسها.')),
                         onSuccess: resolve});
                     upload.findPreviousUploads().then(previous => {if(previous.length) upload.resumeFromPreviousUpload(previous[0]);upload.start();}).catch(reject);
                 });
-                videoSaved = true; savedVideo = file; uploaded = true;
-                const final = prepare(); final.delete('attachments[]'); final.set('type','video'); final.set('publication_status',desiredStatus);
-                if (scheduledAt) final.set('scheduled_at',scheduledAt);
-                message.textContent = 'اكتمل الرفع. جارٍ تأكيد النشر…';
+                savedVideo = file; uploaded = true;
+            }
+            if (total) {
+                const final = cloneData(content); final.set('_method', 'PUT');
+                if (file) final.set('type', 'video');
+                showProgress(total, total, 'اكتمل إرسال الملفات؛ تأكيد الحفظ');
                 await save(final);
             }
-            // File lectures need no separate upload/save button.
-            message.textContent = uploaded ? 'حُفظت المحاضرة والمرفقات. الفيديو قيد التجهيز؛ يظهر للطلاب ويصل التنبيه عند جاهزيته.' : 'تم حفظ المحاضرة والمرفقات بنجاح.';
+            showProgress(1, 1, uploaded ? 'حُفظت الملفات؛ الفيديو قيد الضغط والتجهيز للمشاهدة' : 'اكتمل حفظ المحاضرة والمرفقات', true);
             form.querySelector('[data-rich-save-status]').textContent = 'كل التغييرات محفوظة';
             form.dispatchEvent(new Event('lecture:saved'));
+            await new Promise(resolve => setTimeout(resolve, 350));
             busy = false;
             location.assign(urls.edit_url);
-            return;
-        } catch (error) { message.textContent = error.message || 'تعذّر النشر. المحاضرة المحفوظة متاحة من قائمة المحاضرات.';message.classList.add('has-error'); }
-        finally { busy = false;button.disabled = false;video.disabled = false;attachments.disabled = false; }
+        } catch (error) {
+            message.textContent = `${error.message || 'تعذّر النشر.'} الملفات المكتملة محفوظة. اضغط النشر لإعادة المحاولة.`;
+            message.classList.add('has-error');
+            // An interrupted preparation must not discard any remaining selected files.
+            if (preparedAttachments?.length !== attachments.files.length) preparedAttachments = null;
+        } finally {
+            busy = false; controls.forEach(([control, disabled]) => {control.disabled = disabled;});
+            if (editor) editor.contentEditable = 'true';
+            button.disabled = false;
+        }
     });
     window.addEventListener('beforeunload', event => {if(busy){event.preventDefault();event.returnValue='';}});
 }
