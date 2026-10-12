@@ -9,6 +9,7 @@ use App\Models\Course;
 use App\Models\GradeLevel;
 use App\Models\Student;
 use App\Services\BrandImageService;
+use App\Services\ContentDeletionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -122,12 +123,12 @@ class CourseController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Course $course): RedirectResponse
+    public function destroy(Request $request, Course $course, ContentDeletionService $deletion): RedirectResponse
     {
         $this->authorize('delete', $course);
-        $course->delete();
+        $deletion->delete($request, $course);
 
-        return redirect()->route('admin.courses.index')->with('status', 'تم حذف المادة.');
+        return redirect()->route('admin.courses.index')->with('status', 'أُرشفت المادة ودروسها وحُجبت عن الطلاب، مع حفظ حساباتهم وتقدّمهم.');
     }
 
     public function reorder(Request $request): JsonResponse

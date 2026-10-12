@@ -33,7 +33,7 @@ class Student extends Authenticatable
 
     public function studyGradeLevel(): BelongsTo
     {
-        return $this->belongsTo(GradeLevel::class, 'study_grade_level_id');
+        return $this->belongsTo(GradeLevel::class, 'study_grade_level_id')->withTrashed();
     }
 
     public function createdBy(): BelongsTo
@@ -63,7 +63,7 @@ class Student extends Authenticatable
 
     public function gradeLevel(): BelongsTo
     {
-        return $this->belongsTo(GradeLevel::class);
+        return $this->belongsTo(GradeLevel::class)->withTrashed();
     }
 
     public function accessibleCourses(): Builder

@@ -24,8 +24,9 @@ class GradeLevelManagementTest extends TestCase
         $this->get(route('admin.grade-levels.edit', $grade))->assertOk();
         $this->put(route('admin.grade-levels.update', $grade), ['name' => 'الصف الثاني', 'position' => 2])->assertSessionHasNoErrors();
         $this->assertDatabaseHas('grade_levels', ['id' => $grade->id, 'name' => 'الصف الثاني', 'position' => 2]);
-        $this->delete(route('admin.grade-levels.destroy', $grade))->assertRedirect(route('admin.grade-levels.index'));
-        $this->assertModelMissing($grade);
+        $preview = $this->get(route('admin.grade-levels.delete', $grade))->assertOk();
+        $this->delete(route('admin.grade-levels.destroy', $grade), ['confirmed' => true, 'confirmation' => $preview->viewData('nonce')])->assertRedirect(route('admin.grade-levels.index'));
+        $this->assertSoftDeleted($grade);
     }
 
     public function test_courses_require_an_existing_grade_and_can_move_between_grades(): void
@@ -47,14 +48,14 @@ class GradeLevelManagementTest extends TestCase
         $this->get(route('admin.courses.index', ['grade_level_id' => $other->id]))->assertSee($course->title);
     }
 
-    public function test_grades_with_courses_including_deleted_courses_cannot_be_deleted(): void
+    public function test_grades_with_courses_stay_intact_without_explicit_confirmation(): void
     {
         $grade = GradeLevel::factory()->create();
         $course = Course::factory()->for($grade)->create();
         $this->actingAs(User::factory()->create(['is_super_admin' => true]), 'web');
-        $this->delete(route('admin.grade-levels.destroy', $grade))->assertSessionHasErrors('grade_level');
+        $this->delete(route('admin.grade-levels.destroy', $grade))->assertSessionHasErrors('confirmed');
         $course->delete();
-        $this->delete(route('admin.grade-levels.destroy', $grade))->assertSessionHasErrors('grade_level');
+        $this->delete(route('admin.grade-levels.destroy', $grade))->assertSessionHasErrors('confirmed');
         $this->assertModelExists($grade);
     }
 

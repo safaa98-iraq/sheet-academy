@@ -30,7 +30,7 @@ class UpdateStudentRequest extends FormRequest
             'name' => ['required', 'string', 'max:150'],
             'college' => ['sometimes', 'required', 'string', 'max:190'],
             'phone' => ['sometimes', 'required', 'string', 'max:30', 'regex:/\A[+0-9 ()-]{7,30}\z/'],
-            'study_grade_level_id' => ['sometimes', 'required', 'integer', 'exists:grade_levels,id'],
+            'study_grade_level_id' => ['sometimes', 'required', 'integer', Rule::exists('grade_levels', 'id')->whereNull('deleted_at')],
             'subscription_duration' => ['sometimes', 'required', Rule::in(['unlimited', '30', '90', '180', '365', 'custom'])],
             'subscription_expires_at' => ['exclude_unless:subscription_duration,custom', 'bail', 'required', 'date', new SubscriptionExpiry($student->subscription_expires_at)],
             'email' => ['nullable', 'email', 'max:190', Rule::unique('students', 'email')->ignore($student)],

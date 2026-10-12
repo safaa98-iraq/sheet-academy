@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\ContentDeletionController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\CurriculumController;
 use App\Http\Controllers\Admin\GradeLevelController;
@@ -208,6 +209,10 @@ Route::middleware(['auth:web', 'admin.active'])->prefix('admin')->name('admin.')
         Route::put('/roles/{role}/permissions', [RolePermissionController::class, 'update'])->name('roles.permissions');
         Route::delete('/roles/{role}', [RolePermissionController::class, 'destroy'])->name('roles.destroy');
     });
+
+    Route::get('/grade-levels/{gradeLevel}/delete', [ContentDeletionController::class, 'grade'])->middleware('permission:courses.manage')->name('grade-levels.delete');
+    Route::get('/courses/{course}/delete', [ContentDeletionController::class, 'course'])->middleware('permission:courses.manage')->name('courses.delete');
+    Route::get('/lessons/{lesson}/delete', [ContentDeletionController::class, 'lesson'])->middleware('permission:courses.manage')->name('lessons.delete');
 
     Route::resource('grade-levels', GradeLevelController::class)->only(['index'])->middleware('permission:courses.view');
     Route::resource('grade-levels', GradeLevelController::class)->except(['index', 'show'])->middleware('permission:courses.manage');

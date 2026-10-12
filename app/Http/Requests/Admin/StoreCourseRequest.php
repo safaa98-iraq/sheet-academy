@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreCourseRequest extends FormRequest
 {
@@ -23,7 +24,7 @@ class StoreCourseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'grade_level_id' => ['required', 'integer', 'exists:grade_levels,id'],
+            'grade_level_id' => ['required', 'integer', Rule::exists('grade_levels', 'id')->whereNull('deleted_at')],
             'title' => ['required', 'string', 'max:180'],
             'cover' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'remove_cover' => ['sometimes', 'boolean'],

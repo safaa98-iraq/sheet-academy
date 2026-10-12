@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreLessonRequest;
 use App\Models\Course;
 use App\Models\GradeLevel;
 use App\Models\Lesson;
+use App\Services\ContentDeletionService;
 use App\Services\LessonAttachmentService;
 use App\Services\LessonPublicationService;
 use Illuminate\Http\JsonResponse;
@@ -167,17 +168,15 @@ class LessonController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Lesson $lesson): RedirectResponse
+    public function destroy(Request $request, Lesson $lesson, ContentDeletionService $deletion): RedirectResponse
     {
         $course = $lesson->course;
         abort_if($course === null, 404);
         $this->authorize('update', $course);
-        $lesson->attachments()->delete();
-        $lesson->curriculumNode()->delete();
-        $lesson->delete();
+        $deletion->delete($request, $lesson);
         $this->forgetCurriculumCache($course);
 
-        return redirect()->route('admin.courses.edit', $course)->with('status', 'تم حذف الدرس.');
+        return redirect()->route('admin.courses.edit', $course)->with('status', 'أُرشف الدرس وحُجب الفيديو والمرفقات المرتبطة به عن الطلاب. بقي تقدّمهم محفوظاً.');
     }
 
     private function publishCourseIfRequested(StoreLessonRequest $request, Course $course, Lesson $lesson): void

@@ -585,3 +585,18 @@ qsa('[data-student-access]').forEach(panel => {
     panel.addEventListener('change', updateAccessFields);
     updateAccessFields();
 });
+
+const contentDeleteDialog = qs('[data-content-delete-dialog]');
+if (contentDeleteDialog) {
+    contentDeleteDialog.removeAttribute('open');
+    contentDeleteDialog.showModal();
+    qs('#delete-heading', contentDeleteDialog).focus({preventScroll: true});
+    contentDeleteDialog.scrollTop = 0;
+    contentDeleteDialog.addEventListener('cancel', event => {event.preventDefault(); location.assign(contentDeleteDialog.dataset.cancelUrl);});
+    const acknowledgement = qs('[data-delete-acknowledgement]', contentDeleteDialog);
+    const finalDelete = qs('[data-delete-final]', contentDeleteDialog);
+    const updateDeleteConsent = () => {finalDelete.disabled = !acknowledgement.checked;};
+    acknowledgement.addEventListener('change', updateDeleteConsent);
+    updateDeleteConsent();
+    contentDeleteDialog.querySelector('form').addEventListener('submit', () => {finalDelete.disabled = true;});
+}

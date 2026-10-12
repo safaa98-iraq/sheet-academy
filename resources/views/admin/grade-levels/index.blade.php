@@ -8,7 +8,7 @@
 @can('courses.manage')
 <a class="btn small" href="{{ route('admin.courses.create', ['grade_level_id' => $gradeLevel->id]) }}">إضافة مادة</a>
 <a class="btn small" href="{{ route('admin.grade-levels.edit', $gradeLevel) }}">تعديل</a>
-<form method="post" action="{{ route('admin.grade-levels.destroy', $gradeLevel) }}" data-confirm="هل تريد حذف هذه المرحلة الصفية؟">@csrf @method('DELETE')<button class="btn small">حذف</button></form>
+<a class="btn small" href="{{ route('admin.grade-levels.delete', $gradeLevel) }}"><x-icon name="trash"/>حذف الصف</a>
 @endcan
 </div></td></tr>
 @empty<tr><td colspan="4">لا توجد مراحل صفية بعد. أضف الصف الأول أو الصف الثاني للبدء.</td></tr>@endforelse

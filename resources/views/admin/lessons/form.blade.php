@@ -40,5 +40,5 @@
 <noscript><x-step-tip>فعّل JavaScript لرفع الفيديو مع زر النشر. النص والمرفقات يمكن حفظها من هذا النموذج.</x-step-tip></noscript>
 </section>
 </form>
-@if($lesson->exists)<details class="publisher-advanced"><summary>إدارة المرفقات وحذف المحاضرة</summary>@foreach($lesson->attachments as $attachment)<form method="post" action="{{ route('admin.lesson-attachments.destroy',$attachment) }}" data-confirm="حذف هذا المرفق؟">@csrf @method('DELETE')<button class="btn small"><x-icon name="trash"/>حذف {{ $attachment->original_name }}</button></form>@endforeach<form method="post" action="{{ route('admin.lessons.destroy',$lesson) }}" data-confirm="حذف المحاضرة؟">@csrf @method('DELETE')<button class="btn small">حذف المحاضرة</button></form></details>@endif
+@if($lesson->exists)<details class="publisher-advanced"><summary>إدارة المرفقات وحذف المحاضرة</summary>@foreach($lesson->attachments as $attachment)<form method="post" action="{{ route('admin.lesson-attachments.destroy',$attachment) }}" data-confirm="حذف هذا المرفق؟">@csrf @method('DELETE')<button class="btn small"><x-icon name="trash"/>حذف {{ $attachment->original_name }}</button></form>@endforeach<a class="btn small" href="{{ route('admin.lessons.delete', $lesson) }}"><x-icon name="trash"/>حذف المحاضرة</a></details>@endif
 @endsection

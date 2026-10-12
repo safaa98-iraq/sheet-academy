@@ -20,6 +20,6 @@
             <button class="btn primary" style="margin-top:12px">حفظ تسجيلات الطلاب</button>
         </form>
     </section>
-    <form method="post" action="{{ route('admin.courses.destroy',$course) }}" data-confirm="سيُخفى هذا المحتوى عن الطلاب. هل تريد المتابعة؟">@csrf @method('DELETE')<button class="btn">حذف المادة حذفاً ناعماً</button></form>
+    <a class="btn" href="{{ route('admin.courses.delete', $course) }}"><x-icon name="trash"/>حذف المادة ودروسها</a>
 @endif
 @endsection
