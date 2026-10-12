@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Controllers\Student\StudentViewLinkController;
 use App\Models\StudentDevice;
 use App\Services\StudentAuditService;
 use Closure;
@@ -23,6 +24,10 @@ class EnsureStudentViewLinkIsCurrent
         $device = StudentDevice::query()->whereKey($request->session()->get('student_device_id'))
             ->where('student_id', $student?->id)->whereNull('revoked_at')->first();
         $viewLink = $request->query('view');
+        if ($device !== null && ! $request->has('view') && ! $request->expectsJson()
+            && $request->isMethod('GET') && $request->routeIs('student.lesson.show', 'student.documents.show')) {
+            return app(StudentViewLinkController::class)->open($request);
+        }
         if ($device === null || ! is_string($viewLink) || strlen($viewLink) < 100 || strlen($viewLink) > 1024
             || ! hash_equals((string) $device->view_link_hash, hash('sha256', $viewLink))) {
             $this->audit->record($student, 'stale_view_link', $request, ['path' => $request->path()], $device);

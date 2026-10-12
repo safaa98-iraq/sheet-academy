@@ -92,6 +92,7 @@ if (document.body.dataset.preview !== 'true' && document.body.dataset.studentWat
             onTamper: () => {container.replaceChildren(); auditEvent('suspicious_watermark', document.querySelector('[data-lesson-page]')?.dataset.lessonPayload ? JSON.parse(document.querySelector('[data-lesson-page]').dataset.lessonPayload).id : null);}});
     });
 }
+let openingContent = false;
 document.addEventListener('click', async event => {
     const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
     if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.target === '_blank') return;
@@ -103,6 +104,9 @@ document.addEventListener('click', async event => {
     const documentPage = target.pathname.match(/^\/documents\/(\d+)\/?$/);
     if (!lesson && !documentPage) return;
     event.preventDefault();
+    if (openingContent) return;
+    openingContent = true;
+    link.setAttribute('aria-busy', 'true');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
     try {
         const response = await fetch(body.dataset.viewLinkIssueUrl, {
@@ -112,6 +116,8 @@ document.addEventListener('click', async event => {
         if (!response.ok) throw new Error('تعذّر إنشاء رابط مشاهدة جديد.');
         location.assign((await response.json()).url);
     } catch (error) {
+        openingContent = false;
+        link.removeAttribute('aria-busy');
         toast(error.message || 'تعذّر فتح المحتوى. أعد المحاولة.');
     }
 });
@@ -125,6 +131,14 @@ window.addEventListener('pagehide', () => {
             method: 'POST', credentials: 'same-origin', keepalive: true,
             headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf}, body: JSON.stringify({view}),
         }).catch(() => {});
+        // History must return to an authorized landing route, never to a closed view token.
+        history.replaceState(history.state, '', location.pathname);
+    }
+});
+window.addEventListener('pageshow', event => {
+    openingContent = false;
+    if (event.persisted && /^\/(lesson|documents)\/\d+\/?$/.test(location.pathname)) {
+        location.replace(location.pathname);
     }
 });
 

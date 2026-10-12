@@ -134,12 +134,17 @@ export const initProtection = () => {
     });
 
     let devToolsSuspected = false;
+    let candidateSince = null;
     const inspectWindow = () => {
         if (document.visibilityState === 'hidden') {
             return;
         }
-        const suspected = isActive() && window.outerWidth > 0 && window.outerHeight > 0
+        const keyboardFocused = matchMedia('(pointer: coarse)').matches && document.activeElement instanceof Element && document.activeElement.matches(EDITABLE_SELECTOR);
+        const gap = !keyboardFocused && isActive() && window.outerWidth > 0 && window.outerHeight > 0
             && (window.outerWidth - window.innerWidth > 220 || window.outerHeight - window.innerHeight > 220);
+        if (!gap) candidateSince = null;
+        else candidateSince ??= Date.now();
+        const suspected = gap && Date.now() - candidateSince >= 3000;
         if (suspected !== devToolsSuspected) {
             devToolsSuspected = suspected;
             document.body.dataset.devtoolsSuspected = String(suspected);
