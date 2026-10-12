@@ -579,10 +579,15 @@ qsa('[data-student-access]').forEach(panel => {
         panel.querySelector('[data-access-grade]').hidden = !grade;
         panel.querySelector('[data-access-courses]').hidden = grade;
         const select = panel.querySelector('[name="grade_level_id"]');
-        select.disabled = !grade; select.required = grade;
+        select.disabled = !grade;
+        const studyGrade = document.querySelector('[name="study_grade_level_id"]');
+        if (studyGrade && grade) select.value = studyGrade.value;
+        const label = panel.querySelector('[data-access-grade-name]');
+        if (label && studyGrade) label.textContent = studyGrade.selectedOptions[0]?.textContent || 'اختر الصف من بيانات الطالب أعلاه';
         panel.querySelectorAll('[name="course_ids[]"]').forEach(input => input.disabled = grade);
     };
     panel.addEventListener('change', updateAccessFields);
+    document.querySelector('[name="study_grade_level_id"]')?.addEventListener('change', updateAccessFields);
     updateAccessFields();
 });
 

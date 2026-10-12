@@ -69,9 +69,9 @@ class StudentController extends Controller
                 'subscription_expires_at' => $this->subscriptionEnd($data),
                 'status' => 'active',
                 'created_by' => $request->user('web')->id,
-                'grade_level_id' => null,
+                'grade_level_id' => $data['access_type'] === 'grade' ? $data['grade_level_id'] : null,
             ]);
-            $student->courses()->sync($data['course_ids'] ?? []);
+            $student->courses()->sync($data['access_type'] === 'grade' ? [] : ($data['course_ids'] ?? []));
             $issued = $tokens->issue($student, $request->user('web'), isset($data['expires_at']) ? Carbon::parse($data['expires_at']) : $student->subscription_expires_at, isset($data['device_limit']) ? (int) $data['device_limit'] : null);
             session()->flash('issued_student_token', ['student' => $student->name, 'token' => $issued['token']]);
 
@@ -123,9 +123,9 @@ class StudentController extends Controller
         $data = $request->validated();
         DB::transaction(function () use ($student, $data): void {
             $student = Student::whereKey($student->id)->lockForUpdate()->firstOrFail();
-            $student->fill(['name' => $data['name'], 'email' => $data['email'] ?? null, 'grade_level_id' => null,
+            $student->fill(['name' => $data['name'], 'email' => $data['email'] ?? null, 'grade_level_id' => $data['access_type'] === 'grade' ? $data['grade_level_id'] : null,
                 'college' => $data['college'] ?? $student->college, 'phone' => $data['phone'] ?? $student->phone,
-                'study_grade_level_id' => $data['study_grade_level_id'] ?? $student->study_grade_level_id,
+                'study_grade_level_id' => $data['study_grade_level_id'] ?? ($data['grade_level_id'] ?? $student->study_grade_level_id),
                 'subscription_expires_at' => array_key_exists('subscription_duration', $data) ? $this->subscriptionEnd($data, $student->subscription_expires_at) : $student->subscription_expires_at]);
             if ($student->isDirty('subscription_expires_at')) {
                 $student->forceFill(['subscription_expiry_notified_at' => null, 'subscription_reminded_at' => null, 'subscription_reminder_for' => null]);
@@ -135,7 +135,7 @@ class StudentController extends Controller
             if ($subscriptionChanged) {
                 $student->tokens()->whereIn('status', ['active', 'frozen', 'suspended'])->update(['expires_at' => $student->subscription_expires_at, 'expiry_notified_at' => null]);
             }
-            $student->courses()->sync($data['course_ids'] ?? []);
+            $student->courses()->sync($data['access_type'] === 'grade' ? [] : ($data['course_ids'] ?? []));
         });
 
         return redirect()->route('admin.students.index')->with('status', 'تم تحديث بيانات الطالب.');

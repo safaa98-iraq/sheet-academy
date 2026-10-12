@@ -34,11 +34,11 @@ class StudentLectureNotificationTest extends TestCase
         $service = app(LessonPublicationService::class);
         $service->notify($lesson);
         $service->notify($lesson);
-        foreach ([$assigned] as $student) {
+        foreach ([$assigned, $wholeGrade] as $student) {
             $this->assertSame(1, $student->notifications()->count());
             $this->assertSame($lesson->id, $student->notifications()->sole()->data['lesson_id']);
         }
-        foreach ([$wholeGrade, $unassigned, $expired, $frozen] as $student) {
+        foreach ([$unassigned, $expired, $frozen] as $student) {
             $this->assertSame(0, $student->notifications()->count());
         }
     }

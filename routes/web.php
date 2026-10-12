@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\ArchivedContentController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\ContentDeletionController;
 use App\Http\Controllers\Admin\CourseController;
@@ -198,6 +199,7 @@ Route::middleware(['auth:web', 'admin.active'])->prefix('admin')->name('admin.')
         Route::patch('/students/{student}/status', [StudentController::class, 'status'])->name('students.status');
     });
 
+    Route::get('/archive', [ArchivedContentController::class, 'index'])->middleware('permission:courses.manage')->name('archive.index');
     Route::get('/settings', [SiteSettingController::class, 'edit'])->middleware('permission:settings.manage')->name('settings.edit');
     Route::put('/settings', [SiteSettingController::class, 'update'])->middleware('permission:settings.manage')->name('settings.update');
 

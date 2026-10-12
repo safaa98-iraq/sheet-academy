@@ -36,14 +36,14 @@ class StudentAccessScopeTest extends TestCase
         $this->get(route('student.playlist'))->assertOk()->assertSee($course->title)->assertDontSee($future->title);
     }
 
-    public function test_updating_enrollments_replaces_access_and_legacy_grade_alone_never_grants_access(): void
+    public function test_switching_to_custom_courses_replaces_automatic_grade_access(): void
     {
         $grade = GradeLevel::factory()->create();
         $unselected = Course::factory()->for($grade)->create();
         $first = Course::factory()->create();
         $second = Course::factory()->create();
         $student = Student::factory()->create(['grade_level_id' => $grade->id]);
-        $this->assertSame([], $student->accessibleCourses()->pluck('id')->all());
+        $this->assertSame([$unselected->id], $student->accessibleCourses()->pluck('id')->all());
         $this->actingAs(User::factory()->create(['is_super_admin' => true]), 'web');
         foreach ([$first, $second] as $selected) {
             $this->put(route('admin.students.update', $student), ['name' => $student->name, 'access_type' => 'courses', 'course_ids' => [$selected->id], 'grade_level_id' => $grade->id])->assertSessionHasNoErrors();
@@ -53,12 +53,12 @@ class StudentAccessScopeTest extends TestCase
         $this->get(route('admin.students.show', $student))->assertOk()->assertSee($second->title)->assertDontSee($first->title)->assertDontSee($unselected->title);
     }
 
-    public function test_implicit_grade_access_is_rejected_and_unprivileged_admin_cannot_change_enrollments(): void
+    public function test_invalid_grade_is_rejected_and_unprivileged_admin_cannot_change_enrollments(): void
     {
         $student = Student::factory()->create();
         $grade = GradeLevel::factory()->create();
         $this->actingAs(User::factory()->create(['is_super_admin' => true]), 'web');
-        $this->put(route('admin.students.update', $student), ['name' => $student->name, 'access_type' => 'grade', 'grade_level_id' => $grade->id])->assertSessionHasErrors('access_type');
+        $this->put(route('admin.students.update', $student), ['name' => $student->name, 'access_type' => 'grade', 'grade_level_id' => 999])->assertSessionHasErrors('grade_level_id');
         $this->actingAs(User::factory()->create(['is_super_admin' => false]), 'web');
         $this->put(route('admin.students.update', $student), ['name' => $student->name, 'access_type' => 'courses'])->assertForbidden();
         $this->assertNull($student->fresh()->grade_level_id);

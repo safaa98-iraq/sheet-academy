@@ -22,6 +22,19 @@ class StoreStudentRequest extends FormRequest
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
+    protected function prepareForValidation(): void
+    {
+        $student = $this->route('student');
+        $explicitMode = $this->input('access_type');
+        $mode = $explicitMode ?? ($this->has('course_ids') ? 'courses' : ($student ? ($student->grade_level_id ? 'grade' : 'courses') : ($this->filled('study_grade_level_id') ? 'grade' : 'courses')));
+        $this->merge(['access_type' => $mode]);
+        if ($mode === 'grade') {
+            $this->merge(['grade_level_id' => $this->input('study_grade_level_id') ?: $this->input('grade_level_id') ?: $student?->study_grade_level_id ?: $student?->grade_level_id]);
+        } elseif ($student && $explicitMode === null && ! $this->has('course_ids')) {
+            $this->merge(['course_ids' => $student->courses()->pluck('courses.id')->all()]);
+        }
+    }
+
     public function rules(): array
     {
         return [
@@ -32,8 +45,9 @@ class StoreStudentRequest extends FormRequest
             'subscription_duration' => ['sometimes', 'required', Rule::in(['unlimited', '30', '90', '180', '365', 'custom'])],
             'subscription_expires_at' => ['exclude_unless:subscription_duration,custom', 'bail', 'required', 'date', new SubscriptionExpiry],
             'email' => ['nullable', 'email', 'max:190', Rule::unique('students', 'email')],
-            'access_type' => ['sometimes', 'required', Rule::in(['courses'])],
-            'course_ids' => ['sometimes', 'array'],
+            'access_type' => ['sometimes', 'required', Rule::in(['grade', 'courses'])],
+            'grade_level_id' => ['exclude_unless:access_type,grade', 'required', 'integer', Rule::exists('grade_levels', 'id')->whereNull('deleted_at')],
+            'course_ids' => ['exclude_if:access_type,grade', 'sometimes', 'array'],
             'course_ids.*' => ['integer', 'distinct', Rule::exists('courses', 'id')->whereNull('deleted_at')],
             'expires_at' => ['nullable', 'date', 'after:now'],
             'device_limit' => ['nullable', 'integer', 'in:1'],
@@ -43,7 +57,7 @@ class StoreStudentRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'access_type.in' => 'حدد المواد المشترك بها الطالب؛ المرحلة الدراسية لا تمنح وصولاً تلقائياً.',
+            'access_type.in' => 'اختر الوصول التلقائي حسب الصف أو مواد محددة من الأستاذ.',
             'grade_level_id.required' => 'اختر المرحلة الدراسية المطلوب إتاحتها.',
             'grade_level_id.exists' => 'المرحلة الدراسية غير موجودة.',
             'college.required' => 'اسم الكلية مطلوب.',

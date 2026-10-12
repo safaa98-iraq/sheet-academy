@@ -27,7 +27,10 @@ class CourseController extends Controller
     {
         $this->authorize('viewAny', Course::class);
 
-        return view('admin.courses.index', ['courses' => Course::with('gradeLevel')->withCount(['lessons', 'students'])->when($request->filled('grade_level_id'), fn ($query) => $query->where('grade_level_id', $request->integer('grade_level_id')))->orderBy('position')->orderByDesc('id')->get(), 'gradeLevels' => GradeLevel::orderBy('position')->orderBy('id')->get()]);
+        return view('admin.courses.index', ['courses' => Course::with('gradeLevel')->withCount('lessons')->selectSub(Student::query()->selectRaw('COUNT(*)')->where(function ($query): void {
+            $query->where(fn ($grade) => $grade->whereNotNull('students.grade_level_id')->whereColumn('students.grade_level_id', 'courses.grade_level_id'))
+                ->orWhere(fn ($custom) => $custom->whereNull('students.grade_level_id')->whereExists(fn ($enrollment) => $enrollment->selectRaw('1')->from('course_student')->whereColumn('course_student.student_id', 'students.id')->whereColumn('course_student.course_id', 'courses.id')));
+        }), 'students_count')->when($request->filled('grade_level_id'), fn ($query) => $query->where('grade_level_id', $request->integer('grade_level_id')))->orderBy('position')->orderByDesc('id')->get(), 'gradeLevels' => GradeLevel::orderBy('position')->orderBy('id')->get()]);
     }
 
     /**
@@ -87,7 +90,7 @@ class CourseController extends Controller
     {
         $this->authorize('update', $course);
 
-        return view('admin.courses.form', ['course' => $course->load(['students', 'lessons']), 'students' => Student::orderBy('name')->get(), 'gradeLevels' => GradeLevel::orderBy('position')->orderBy('id')->get()]);
+        return view('admin.courses.form', ['course' => $course->load(['students', 'lessons']), 'students' => Student::whereNull('grade_level_id')->orderBy('name')->get(), 'gradeLevels' => GradeLevel::orderBy('position')->orderBy('id')->get()]);
     }
 
     /**

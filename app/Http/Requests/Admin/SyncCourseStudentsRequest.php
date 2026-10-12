@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class SyncCourseStudentsRequest extends FormRequest
 {
@@ -24,7 +25,7 @@ class SyncCourseStudentsRequest extends FormRequest
     {
         return [
             'student_ids' => ['sometimes', 'array', 'max:1000'],
-            'student_ids.*' => ['integer', 'distinct', 'exists:students,id'],
+            'student_ids.*' => ['integer', 'distinct', Rule::exists('students', 'id')->whereNull('grade_level_id')],
         ];
     }
 
@@ -32,7 +33,7 @@ class SyncCourseStudentsRequest extends FormRequest
     {
         return [
             'student_ids.max' => 'لا يمكن ربط أكثر من ألف طالب في عملية واحدة.',
-            'student_ids.*.exists' => 'أحد الطلاب المحددين غير موجود.',
+            'student_ids.*.exists' => 'اختر طلاب نمط المواد المحددة فقط؛ طلاب الصف يصلون إلى مواده تلقائياً.',
         ];
     }
 }

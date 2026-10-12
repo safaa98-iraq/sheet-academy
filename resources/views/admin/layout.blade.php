@@ -6,6 +6,7 @@
         ['grade-levels', 'المراحل الصفية', 'book', 'admin.grade-levels.index', 'courses.view'],
         ['lessons', 'المحاضرات والمحتوى', 'layers', 'admin.lessons.index', 'courses.view'],
         ['curriculum', 'المواد والكتب', 'book', 'admin.courses.index', 'courses.view'],
+        ['archive', 'الصفوف والمواد والدروس المؤرشفة', 'clock', 'admin.archive.index', 'courses.manage'],
         ['students', 'إدارة الطلاب', 'user', 'admin.students.index', 'students.view'],
         ['student-progress', 'تقدم الطلاب', 'chart', 'admin.student-progress', 'students.view'],
         ['admins', 'الفريق والصلاحيات', 'shield', 'admin.admins.index', 'admins.manage'],

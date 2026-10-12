@@ -10,7 +10,7 @@
 <section class="admin-form">
     <div class="admin-head"><h2>المواد والتقدّم الدراسي</h2><a class="btn small" href="{{ route('admin.student-progress.show', $student) }}"><x-icon name="chart"/><span>عرض تقدّم الطالب</span></a></div>
     <p class="muted">الطالب يرى المواد المنشورة المسجّل بها فقط. أضف المواد أو أزلها من «تعديل البيانات والمواد».</p>
-    <p><b>نطاق الوصول:</b> المواد المختارة من الأستاذ فقط</p>
+    <p><b>نطاق الوصول:</b> {{ $student->grade_level_id ? 'مواد صف الطالب تلقائياً' : 'المواد التي اختارها الأستاذ فقط' }}</p>
     <p class="muted">نسبة التقدّم تشمل الإنجاز الجزئي للدروس المتاحة للطالب، وتُحسب بالطريقة نفسها في حسابه.</p>
     <div class="student-course-progress-list">
         @forelse($accessibleCourses as $course)

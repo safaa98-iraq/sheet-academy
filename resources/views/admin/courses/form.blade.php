@@ -14,7 +14,7 @@
 </form>
 @if($course->exists)
     <div class="admin-head"><div><h2>محاضرات المادة</h2><p class="muted">أضف المحاضرات والفيديوهات والنصوص والمرفقات مباشرة.</p></div><a class="btn primary" href="{{ route('admin.lessons.index',['grade_level_id'=>$course->grade_level_id,'course_id'=>$course->id]) }}">إدارة المحاضرات</a></div>
-    <section class="admin-form"><h2>تسجيل الطلاب</h2><p class="muted">الطلاب المحددون هنا فقط يملكون وصولاً إلى هذه المادة بعد نشرها. حفظ الاختيار يستبدل تسجيلات هذه المادة؛ المرحلة الدراسية وحدها لا تمنح وصولاً.</p>
+    <section class="admin-form"><h2>تسجيل الطلاب</h2><p class="muted">طلاب صف هذه المادة في نمط الوصول التلقائي يصلون إليها بعد نشرها. هذه القائمة لتسجيل طلاب نمط «مواد محددة»؛ يمكن تغيير النمط من ملف الطالب. حفظ الاختيار يستبدل التسجيلات المباشرة لهذه المادة.</p>
         <form method="post" action="{{ route('admin.courses.students.sync',$course) }}">@csrf @method('PUT')
             <label>الطلاب<select name="student_ids[]" multiple size="8">@foreach($students as $student)<option value="{{ $student->id }}" @selected($course->students->contains('id',$student->id))>{{ $student->name }}{{ $student->email?' · '.$student->email:'' }}</option>@endforeach</select></label>
             <button class="btn primary" style="margin-top:12px">حفظ تسجيلات الطلاب</button>

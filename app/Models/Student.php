@@ -68,6 +68,10 @@ class Student extends Authenticatable
 
     public function accessibleCourses(): Builder
     {
+        if ($this->grade_level_id !== null) {
+            return Course::query()->where('grade_level_id', $this->grade_level_id)->whereHas('gradeLevel');
+        }
+
         return Course::query()->whereHas('students', fn (Builder $students) => $students->whereKey($this->id));
     }
 
