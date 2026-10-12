@@ -28,7 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(AddSecurityHeaders::class);
         $middleware->preventRequestForgery(except: ['internal/video-processing']);
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('admin/*') || $request->is('admin') ? route('admin.login') : route('student.login'));
-        $middleware->redirectUsersTo(fn (Request $request) => $request->is('admin/*') || $request->is('admin') ? route('admin.dashboard') : route('student.learning'));
+        $middleware->redirectUsersTo(fn (Request $request) => $request->is('admin/*', 'admin', 'professor/*') ? route('admin.dashboard') : route('student.learning'));
         $middleware->alias([
             'admin.active' => EnsureAdminIsActive::class,
             'student.token' => EnsureStudentTokenIsActive::class,

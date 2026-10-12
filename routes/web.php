@@ -16,6 +16,7 @@ use App\Http\Controllers\Auth\AdminSessionController;
 use App\Http\Controllers\Auth\StudentTokenAuthController;
 use App\Http\Controllers\Internal\VideoProcessingController;
 use App\Http\Controllers\LessonAttachmentController;
+use App\Http\Controllers\Student\AccountController;
 use App\Http\Controllers\Student\DocumentViewerController;
 use App\Http\Controllers\Student\LessonProgressController;
 use App\Http\Controllers\Student\NotificationController;
@@ -38,16 +39,21 @@ use Illuminate\Support\Facades\Route;
 Route::redirect('/', '/login');
 
 Route::middleware('guest:student')->group(function (): void {
-    Route::get('/login', fn () => view('auth.student-login'))->name('student.login');
-    Route::post('/login', [StudentTokenAuthController::class, 'store'])->middleware('throttle:student-token-login')->name('student.login.store');
+    Route::get('/student/login', fn () => view('auth.student-login'))->name('student.login');
+    Route::post('/student/login', [StudentTokenAuthController::class, 'store'])->middleware('throttle:student-token-login')->name('student.login.store');
+    Route::get('/login', fn () => view('auth.student-login'));
+    Route::post('/login', [StudentTokenAuthController::class, 'store'])->middleware('throttle:student-token-login');
 });
 
 Route::middleware('guest:web')->group(function (): void {
-    Route::get('/admin/login', fn () => view('auth.admin-login'))->name('admin.login');
-    Route::post('/admin/login', [AdminSessionController::class, 'store'])->middleware('throttle:admin-login')->name('admin.login.store');
+    Route::get('/professor/login', fn () => view('auth.admin-login'))->name('admin.login');
+    Route::post('/professor/login', [AdminSessionController::class, 'store'])->middleware('throttle:admin-login')->name('admin.login.store');
+    Route::get('/admin/login', fn () => view('auth.admin-login'));
+    Route::post('/admin/login', [AdminSessionController::class, 'store'])->middleware('throttle:admin-login');
 });
 
 Route::middleware(['auth:student', 'student.token', 'student.device', 'student.agreement'])->group(function (): void {
+    Route::get('/student/account', [AccountController::class, 'show'])->name('student.account');
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->middleware('throttle:30,1')->name('student.notifications.unread-count');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('student.notifications');
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'update'])->whereUuid('notification')->name('student.notifications.read');

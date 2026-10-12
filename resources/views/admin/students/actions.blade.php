@@ -2,7 +2,7 @@
 <section class="admin-form">
     <h2>التحكم بحساب الطالب</h2>
     <div class="action-row student-account-actions">
-        @unless(request()->routeIs('admin.students.edit'))<a class="btn" href="{{ route('admin.students.edit', $student) }}"><x-icon name="edit"/><span>تعديل البيانات والمواد</span></a>@endunless
+        @unless(request()->routeIs('admin.students.edit', 'admin.students.show'))<a class="btn" href="{{ route('admin.students.edit', $student) }}"><x-icon name="edit"/><span>تعديل البيانات والمواد</span></a>@endunless
         @if($student->status === 'active')
             <form method="post" action="{{ route('admin.students.status', $student) }}" data-confirm="تجميد الحساب يمنع الطالب من الدخول ومتابعة الدروس. متابعة؟">@csrf @method('PATCH')<input type="hidden" name="status" value="frozen"><button class="btn"><x-icon name="pause"/><span>تجميد الحساب</span></button></form>
         @else

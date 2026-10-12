@@ -6,7 +6,7 @@
 <div class="publisher-step-title"><span aria-hidden="true">١</span><div><h2 id="student-details-title">بيانات الطالب</h2><p class="muted">بيانات التواصل والمرحلة الدراسية.</p></div></div>
 @include('admin.students.profile-fields')
 </section>
-<section class="student-edit-section" aria-labelledby="student-subscription-title">
+<section id="subscription" class="student-edit-section" aria-labelledby="student-subscription-title">
 <div class="publisher-step-title"><span aria-hidden="true">٢</span><div><h2 id="student-subscription-title">تاريخ انتهاء الاشتراك</h2><p class="muted">تاريخ مرن تختاره من التقويم.</p></div></div>
 @include('admin.students.subscription-fields')
 </section>

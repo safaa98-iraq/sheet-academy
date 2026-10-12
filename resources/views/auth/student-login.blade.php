@@ -9,8 +9,8 @@
         <form class="form-box" method="post" action="{{ route('student.login.store') }}">
             @csrf
             <div class="login-icon"><x-icon name="key"/></div>
-            <span class="eyebrow">أهلاً بعودتك</span>
-            <h2 id="login-title">جاهز لخطوتك التالية؟</h2>
+            <span class="eyebrow">مساحة الطلاب</span>
+            <h2 id="login-title">تسجيل دخول الطالب</h2>
             <p class="muted">أدخل رمز الوصول وافتح مساحتك التعليمية.</p>
             <label for="token">رمز الوصول</label>
             <div class="token-input"><x-icon name="shield"/><input id="token" name="token" value="{{ old('token') }}" required autocomplete="off" spellcheck="false" dir="ltr" placeholder="أدخل رمز الوصول الخاص بك" aria-describedby="token-help @error('token') token-error @enderror" @error('token') aria-invalid="true" @enderror></div>
@@ -19,7 +19,6 @@
             <button class="btn primary full login-submit" type="submit">الدخول إلى مساحتي<x-icon name="arrow-left"/></button>
             <p class="login-support">تحتاج إلى مساعدة؟ <button type="button" class="text-button" data-modal="token-help-modal">طريقة الحصول على الرمز</button></p>
             <div class="login-divider">مساحة مخصصة لطلاب المنصة</div>
-            <a class="instructor-login" href="{{ route('admin.login') }}"><x-icon name="user"/>دخول الأستاذ والإدارة<x-icon name="arrow-left"/></a>
         </form>
         <small class="login-copyright">© {{ date('Y') }} عيادة التعلّم. تعلّم بثقة.</small>
     </section>

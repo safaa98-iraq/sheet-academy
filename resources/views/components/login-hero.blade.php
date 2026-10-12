@@ -1,6 +1,6 @@
 @props(['audience' => 'student'])
 <section class="welcome">
-    <a class="brand" href="{{ route('student.login') }}">
+    <a class="brand" href="{{ route($audience === 'admin' ? 'admin.login' : 'student.login') }}">
         <span class="brand-mark"><x-icon name="tooth"/></span>
         <span>عيادة التعلّم<small>معرفة تصنع الفرق</small></span>
     </a>
