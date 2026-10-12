@@ -88,7 +88,7 @@ class PhaseFiveDeterrenceTest extends TestCase
 
             $prefix = $process->command[array_key_last($process->command)];
             $image = imagecreatetruecolor(300, 400);
-            imagepng($image, $prefix.'-1.png');
+            imagepng($image, $prefix.'.png');
             imagedestroy($image);
 
             return '';
@@ -113,6 +113,52 @@ class PhaseFiveDeterrenceTest extends TestCase
         $this->get($imageUrl)->assertOk()->assertHeader('Content-Type', 'image/png')->assertHeader('Content-Disposition', 'inline');
         $this->assertSame(1, count(Storage::disk('private')->allFiles('viewer-pages')));
         Storage::disk('private')->assertExists('lessons/notes.pdf');
+    }
+
+    public function test_long_pdf_opens_without_bulk_conversion_and_renders_only_the_requested_page(): void
+    {
+        Storage::fake('private');
+        Process::fake(function (PendingProcess $process): string {
+            if ($process->command[0] === 'pdfinfo') {
+                return "Pages: 217\n";
+            }
+            $prefix = $process->command[array_key_last($process->command)];
+            $image = imagecreatetruecolor(40, 60);
+            imagepng($image, $prefix.'.png');
+            imagedestroy($image);
+
+            return '';
+        });
+        $student = Student::factory()->create();
+        [$course, $lesson] = $this->publishedLesson();
+        $student->courses()->attach($course);
+        Storage::disk('private')->put('long.pdf', '%PDF-1.7');
+        $attachment = LessonAttachment::create(['lesson_id' => $lesson->id, 'disk' => 'private', 'path' => 'long.pdf', 'original_name' => 'long.pdf', 'mime_type' => 'application/pdf', 'size_bytes' => 8]);
+        $this->loginStudent(app(StudentTokenService::class)->issue($student)['token']);
+
+        $viewer = $this->get($this->issueStudentViewLink('document', $attachment->id))->assertOk();
+        $this->assertCount(217, $viewer->viewData('documentPages'));
+        Process::assertNotRan(fn (PendingProcess $process): bool => $process->command[0] === 'pdftoppm');
+        $lastPage = $viewer->viewData('documentPages')[216]['url'];
+        $this->get($lastPage)->assertOk()->assertHeader('Content-Type', 'image/png');
+        $this->get($lastPage)->assertOk();
+        Process::assertRanTimes(fn (PendingProcess $process): bool => $process->command[0] === 'pdftoppm' && $process->command[2] === '217' && $process->command[4] === '217', 1);
+        $this->assertSame(1, count(Storage::disk('private')->allFiles('viewer-pages')));
+    }
+
+    public function test_invalid_pdf_shows_arabic_help_and_preserves_private_original(): void
+    {
+        Storage::fake('private');
+        Process::fake(['*' => Process::result(errorOutput: 'Invalid PDF', exitCode: 1)]);
+        $student = Student::factory()->create();
+        [$course, $lesson] = $this->publishedLesson();
+        $student->courses()->attach($course);
+        Storage::disk('private')->put('broken.pdf', '%PDF-invalid');
+        $attachment = LessonAttachment::create(['lesson_id' => $lesson->id, 'disk' => 'private', 'path' => 'broken.pdf', 'original_name' => 'broken.pdf', 'mime_type' => 'application/pdf', 'size_bytes' => 12]);
+        $this->loginStudent(app(StudentTokenService::class)->issue($student)['token']);
+
+        $this->get($this->issueStudentViewLink('document', $attachment->id))->assertStatus(422)->assertSee('تعذّر فتح الملزمة')->assertDontSee('Invalid PDF');
+        Storage::disk('private')->assertExists('broken.pdf');
     }
 
     public function test_teacher_can_filter_audit_logs_and_opening_the_page_clears_alerts(): void

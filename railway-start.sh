@@ -9,7 +9,8 @@ unset DEPLOY_DATABASE_DUMP_PART_1 DEPLOY_DATABASE_DUMP_PART_2 DEPLOY_DATABASE_DU
 php artisan config:clear --no-interaction
 php artisan migrate --force --no-interaction
 php artisan config:cache --no-interaction
-php artisan app:diagnose-document 6 --no-interaction || true
+php artisan app:diagnose-document 6 --render-page=1 --no-interaction || true
+php artisan app:diagnose-document 6 --render-page=217 --no-interaction || true
 php artisan route:cache --no-interaction
 php artisan view:cache --no-interaction
 chown -R www-data:www-data storage bootstrap/cache
