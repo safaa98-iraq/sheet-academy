@@ -11,6 +11,7 @@ use App\Models\Student;
 use App\Models\StudentDevice;
 use App\Models\User;
 use App\Notifications\SuspiciousStudentActivity;
+use App\Services\StudentAuditService;
 use App\Services\StudentTokenService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Process\PendingProcess;
@@ -106,6 +107,10 @@ class PhaseFiveDeterrenceTest extends TestCase
         $viewerUrl = $this->issueStudentViewLink('document', $attachment->id);
 
         $viewer = $this->get($viewerUrl)->assertOk()->assertSee('data-document-image', false);
+        $identifier = app(StudentAuditService::class)->watermarkIdentifier($student);
+        $this->assertSame($identifier, $viewer->viewData('lessonData')['watermark']);
+        $this->assertStringNotContainsString($student->name, $viewer->viewData('lessonData')['watermark']);
+        $this->assertStringContainsString($student->name, app(StudentAuditService::class)->watermarkText($student));
         preg_match('/src="([^"]+\/documents\/[^" ]+\/pages\/1\?[^" ]+)"/', $viewer->getContent(), $matches);
         $this->assertNotEmpty($matches[1] ?? null);
         $imageUrl = html_entity_decode($matches[1]);

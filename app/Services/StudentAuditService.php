@@ -69,9 +69,12 @@ class StudentAuditService
 
     public function watermarkText(Student $student): string
     {
-        $identifier = strtoupper(substr(hash_hmac('sha256', 'watermark:'.$student->id, (string) config('app.key')), 0, 16));
+        return $student->name.' · '.$this->watermarkIdentifier($student);
+    }
 
-        return $student->name.' · '.$identifier;
+    public function watermarkIdentifier(Student $student): string
+    {
+        return strtoupper(substr(hash_hmac('sha256', 'watermark:'.$student->id, (string) config('app.key')), 0, 16));
     }
 
     private function notifyAdminsWhenNeeded(?Student $student, string $event, Request $request, int $points, int $priorPoints): void
