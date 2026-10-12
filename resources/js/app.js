@@ -242,6 +242,12 @@ function updateLearning() {
     const banner = qs('[data-resume-banner]');
     if (banner && latest) {
         qs('[data-resume-course]', banner).textContent = latest.course.title;
+        const coverTemplate = qsa('[data-resume-cover-id]').find(template => template.dataset.resumeCoverId === String(latest.course.id));
+        const cover = qs('[data-resume-cover]', banner);
+        if (cover && coverTemplate) {
+            cover.replaceChildren(coverTemplate.content.cloneNode(true));
+            cover.classList.toggle('has-course-cover', coverTemplate.dataset.hasCover === 'true');
+        }
         qs('[data-resume-title]', banner).textContent = latest.lesson.title;
         qs('[data-resume-percent]', banner).textContent = `${latest.percent}٪ من المادة مكتمل`;
         qs('[data-resume-link]', banner).href = latest.lesson.url;

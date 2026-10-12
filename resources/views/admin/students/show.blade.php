@@ -16,7 +16,7 @@
         @forelse($accessibleCourses as $course)
             @php($progress = $courseProgress[$course->id])
             <article class="student-course-progress">
-                <div class="student-course-progress-heading"><div><h3><x-icon name="book"/> {{ $course->title }}</h3><small class="muted">{{ $course->gradeLevel?->name ?? 'بدون مرحلة' }}</small></div><span class="badge">{{ !$course->isVisibleToStudents() ? 'غير متاحة للطالب حالياً' : ($progress['total'] === 0 ? 'لا توجد دروس منشورة' : ($progress['percentage'] === 100 ? 'مكتملة' : ($progress['percentage'] > 0 ? 'قيد التعلّم' : 'لم يبدأ بعد'))) }}</span></div>
+                <div class="student-course-progress-heading"><div><h3 class="course-identity"><x-course-image :src="$course->cover_image" :title="$course->title"/> {{ $course->title }}</h3><small class="muted">{{ $course->gradeLevel?->name ?? 'بدون مرحلة' }}</small></div><span class="badge">{{ !$course->isVisibleToStudents() ? 'غير متاحة للطالب حالياً' : ($progress['total'] === 0 ? 'لا توجد دروس منشورة' : ($progress['percentage'] === 100 ? 'مكتملة' : ($progress['percentage'] > 0 ? 'قيد التعلّم' : 'لم يبدأ بعد'))) }}</span></div>
                 @if($course->isVisibleToStudents())
                     <x-progress-bar :value="$progress['percentage']" :label="'تقدّم الطالب في '.$course->title"/>
                     <div class="student-course-progress-meta"><strong>{{ $progress['percentage'] }}٪</strong><span>{{ $progress['completed'] }} من {{ $progress['total'] }} دروس مكتملة</span></div>

@@ -40,6 +40,8 @@ class ContentDeletionController extends Controller
         $nonce = bin2hex(random_bytes(32));
         $request->session()->put($deletion->confirmationKey($content), ['nonce' => $nonce, 'fingerprint' => $preview['fingerprint'], 'expires_at' => now()->addMinutes(10)->timestamp]);
 
-        return view('admin.delete-content', compact('preview', 'nonce', 'action', 'cancelUrl'));
+        $coverCourse = $content instanceof Course ? $content : ($content instanceof Lesson ? $content->course : null);
+
+        return view('admin.delete-content', compact('preview', 'nonce', 'action', 'cancelUrl', 'coverCourse'));
     }
 }
