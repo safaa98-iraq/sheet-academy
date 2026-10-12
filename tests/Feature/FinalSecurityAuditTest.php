@@ -182,7 +182,7 @@ class FinalSecurityAuditTest extends TestCase
         $this->assertDatabaseHas('lesson_progress', ['student_id' => $student->id, 'lesson_id' => $lesson->id, 'last_position_seconds' => 32]);
     }
 
-    public function test_token_is_one_time_and_old_sessions_are_revoked_when_regenerated(): void
+    public function test_token_is_encrypted_and_old_sessions_are_revoked_when_regenerated(): void
     {
         $student = Student::factory()->create();
         $issued = app(StudentTokenService::class)->issue($student, deviceLimit: 10);
@@ -192,10 +192,11 @@ class FinalSecurityAuditTest extends TestCase
         $new = app(StudentTokenService::class)->issue($student);
         $this->assertNotNull($device->fresh()->revoked_at);
         $this->assertSame('revoked', $issued['record']->fresh()->status);
-        $this->assertNull($new['record']->getRawOriginal('encrypted_token'));
+        $this->assertNotSame($new['token'], $new['record']->getRawOriginal('encrypted_token'));
+        $this->assertSame($new['token'], app(StudentTokenService::class)->reveal($new['record']));
         $this->assertSame(hash('sha256', $new['token']), $new['record']->token_hash);
         $this->actingAs(User::factory()->create(['is_super_admin' => true]), 'web');
-        $this->postJson(route('admin.students.token.reveal', $student))->assertUnprocessable()->assertDontSee($new['token']);
+        $this->postJson(route('admin.students.token.reveal', $student))->assertOk()->assertJsonPath('token', $new['token']);
     }
 
     public function test_no_public_registration_routes_or_mutations_exist(): void

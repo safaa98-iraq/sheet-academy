@@ -20,7 +20,7 @@
             <p class="login-support">تحتاج إلى مساعدة؟ <button type="button" class="text-button" data-modal="token-help-modal">طريقة الحصول على الرمز</button></p>
             <div class="login-divider">مساحة مخصصة لطلاب المنصة</div>
         </form>
-        <small class="login-copyright">© {{ date('Y') }} عيادة التعلّم. تعلّم بثقة.</small>
+        <small class="login-copyright">© {{ date('Y') }} {{ $siteBrand['name'] }}. تعلّم بثقة.</small>
     </section>
 </main>
 <x-modal id="token-help-modal" title="كيف أحصل على رمز الوصول؟"><p class="reading-copy">تمنحك إدارة المنصة رمزاً خاصاً بعد تسجيلك بالمادة. انسخ الرمز كما وصلك والصقه في الحقل. إذا انتهت صلاحيته، تواصل مع أستاذ المادة لإصدار رمز جديد.</p></x-modal>

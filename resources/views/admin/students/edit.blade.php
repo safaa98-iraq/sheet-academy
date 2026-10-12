@@ -12,7 +12,7 @@
 </section>
 <section class="student-edit-section" aria-labelledby="student-content-title">
 <div class="publisher-step-title"><span aria-hidden="true">٣</span><div><h2 id="student-content-title">المواد المتاحة</h2><p class="muted">حدد المحتوى الذي يستطيع الطالب مشاهدته.</p></div></div>
-<x-step-tip>المرحلة في بيانات الطالب تصف دراسته فقط. هنا امنحه مواد محددة أو مرحلة كاملة؛ تصله تنبيهات المحاضرات الجديدة في المحتوى المتاح له.</x-step-tip>@include('admin.students.access-fields')
+<x-step-tip>المرحلة في بيانات الطالب تصف دراسته فقط. هنا اختر فقط المواد المشترك بها؛ تصله تنبيهات المحاضرات الجديدة في المحتوى المتاح له.</x-step-tip>@include('admin.students.access-fields')
 </section>
 <div class="student-save-bar"><p class="muted">زر واحد يحفظ البيانات وتاريخ الاشتراك والمواد. رمز الدخول وتقدّم المشاهدة يبقيان محفوظين.</p><button class="btn primary" type="submit"><x-icon name="save"/>حفظ جميع التغييرات</button></div>
 </form>

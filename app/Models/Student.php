@@ -23,7 +23,7 @@ class Student extends Authenticatable
 
     protected function casts(): array
     {
-        return ['subscription_expires_at' => 'datetime', 'subscription_expiry_notified_at' => 'datetime'];
+        return ['subscription_expires_at' => 'datetime', 'subscription_expiry_notified_at' => 'datetime', 'subscription_reminded_at' => 'datetime', 'subscription_reminder_for' => 'datetime'];
     }
 
     public function subscriptionIsActive(): bool
@@ -68,10 +68,7 @@ class Student extends Authenticatable
 
     public function accessibleCourses(): Builder
     {
-        return Course::query()->when($this->grade_level_id !== null,
-            fn (Builder $query) => $query->where('grade_level_id', $this->grade_level_id),
-            fn (Builder $query) => $query->whereHas('students', fn (Builder $students) => $students->whereKey($this->id)),
-        );
+        return Course::query()->whereHas('students', fn (Builder $students) => $students->whereKey($this->id));
     }
 
     public function preference(): HasOne

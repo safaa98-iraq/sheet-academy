@@ -25,6 +25,8 @@ class StoreCourseRequest extends FormRequest
         return [
             'grade_level_id' => ['required', 'integer', 'exists:grade_levels,id'],
             'title' => ['required', 'string', 'max:180'],
+            'cover' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'remove_cover' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string', 'max:12000'],
             'is_published' => ['sometimes', 'boolean'],
             'publication_status' => ['required_without:is_published', 'in:draft,published,scheduled'],

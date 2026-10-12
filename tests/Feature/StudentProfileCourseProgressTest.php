@@ -32,11 +32,12 @@ class StudentProfileCourseProgressTest extends TestCase
         $this->get(route('admin.students.show', $student))->assertOk()->assertSee($course->title)->assertSee('75٪')->assertSee('1 من 2 دروس مكتملة');
     }
 
-    public function test_grade_courses_without_progress_show_zero_and_unrelated_courses_are_absent(): void
+    public function test_explicit_courses_without_progress_show_zero_and_unassigned_grade_courses_are_absent(): void
     {
         $grade = GradeLevel::factory()->create();
         $student = Student::factory()->create(['grade_level_id' => $grade->id]);
         $course = Course::factory()->for($grade)->create();
+        $student->courses()->attach($course);
         Lesson::factory()->for($course)->create();
         $other = Course::factory()->create();
         $this->actingAs(User::factory()->create(['is_super_admin' => true]), 'web');

@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\SyncCourseStudentsRequest;
 use App\Models\Course;
 use App\Models\GradeLevel;
 use App\Models\Student;
+use App\Services\BrandImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,13 +26,7 @@ class CourseController extends Controller
     {
         $this->authorize('viewAny', Course::class);
 
-        return view('admin.courses.index', ['courses' => Course::with('gradeLevel')->withCount('lessons')->addSelect(['students_count' => Student::selectRaw('COUNT(*)')->where(function ($students): void {
-            $students->whereColumn('students.grade_level_id', 'courses.grade_level_id')->orWhere(function ($specific): void {
-                $specific->whereNull('students.grade_level_id')->whereExists(function ($enrollment): void {
-                    $enrollment->selectRaw('1')->from('course_student')->whereColumn('course_student.student_id', 'students.id')->whereColumn('course_student.course_id', 'courses.id');
-                });
-            });
-        })])->when($request->filled('grade_level_id'), fn ($query) => $query->where('grade_level_id', $request->integer('grade_level_id')))->orderBy('position')->orderByDesc('id')->get(), 'gradeLevels' => GradeLevel::orderBy('position')->orderBy('id')->get()]);
+        return view('admin.courses.index', ['courses' => Course::with('gradeLevel')->withCount(['lessons', 'students'])->when($request->filled('grade_level_id'), fn ($query) => $query->where('grade_level_id', $request->integer('grade_level_id')))->orderBy('position')->orderByDesc('id')->get(), 'gradeLevels' => GradeLevel::orderBy('position')->orderBy('id')->get()]);
     }
 
     /**
@@ -61,6 +56,7 @@ class CourseController extends Controller
                 'grade_level_id' => $data['grade_level_id'], 'title' => $data['title'], 'slug' => Str::slug($data['title']).'-'.Str::lower(Str::random(6)),
                 'description' => $data['description'] ?? null, 'published_at' => $status === 'published' ? now() : null,
                 'publication_status' => $status, 'scheduled_at' => $status === 'scheduled' ? $data['scheduled_at'] : null,
+                'cover_image' => $request->hasFile('cover') ? '/'.app(BrandImageService::class)->store($request->file('cover'), 'cover') : null,
                 'created_by' => $request->user('web')->id, 'position' => (int) Course::max('position') + 1,
             ]);
             $course->curriculumRoot()->create([
@@ -90,7 +86,7 @@ class CourseController extends Controller
     {
         $this->authorize('update', $course);
 
-        return view('admin.courses.form', ['course' => $course->load(['students', 'lessons']), 'students' => Student::whereNull('grade_level_id')->orderBy('name')->get(), 'gradeLevels' => GradeLevel::orderBy('position')->orderBy('id')->get()]);
+        return view('admin.courses.form', ['course' => $course->load(['students', 'lessons']), 'students' => Student::orderBy('name')->get(), 'gradeLevels' => GradeLevel::orderBy('position')->orderBy('id')->get()]);
     }
 
     /**
@@ -102,6 +98,7 @@ class CourseController extends Controller
         $data = $request->validated();
         $status = $data['publication_status'] ?? (($data['is_published'] ?? false) ? 'published' : 'draft');
         $course->update([
+            'cover_image' => $request->hasFile('cover') ? '/'.app(BrandImageService::class)->store($request->file('cover'), 'cover') : ($request->boolean('remove_cover') ? null : $course->cover_image),
             'grade_level_id' => $data['grade_level_id'], 'title' => $data['title'],
             'description' => $data['description'] ?? null,
             'published_at' => $status === 'published' ? ($course->published_at ?? now()) : null,

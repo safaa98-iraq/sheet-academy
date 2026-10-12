@@ -39,14 +39,7 @@ class LessonPublicationService
             }
             $course = $current->course;
             Student::query()->where('status', 'active')->where(fn ($query) => $query->whereNull('subscription_expires_at')->orWhere('subscription_expires_at', '>', now()))
-                ->where(function ($query) use ($course): void {
-                    $query->where(function ($query) use ($course): void {
-                        $query->whereNull('grade_level_id')->whereHas('courses', fn ($query) => $query->whereKey($course->id));
-                    });
-                    if ($course->grade_level_id !== null) {
-                        $query->orWhere('grade_level_id', $course->grade_level_id);
-                    }
-                })->chunkById(100, function ($students) use ($current): void {
+                ->whereHas('courses', fn ($query) => $query->whereKey($course->id))->chunkById(100, function ($students) use ($current): void {
                     foreach ($students as $student) {
                         if (Gate::forUser($student)->allows('viewByStudent', $current)) {
                             $student->notify(new NewLecturePublished($current));

@@ -9,11 +9,14 @@ use App\Http\Controllers\Admin\LessonController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\RolePermissionController;
+use App\Http\Controllers\Admin\SiteSettingController;
+use App\Http\Controllers\Admin\StudentAccessController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\StudentProgressController;
 use App\Http\Controllers\Admin\VideoUploadController;
 use App\Http\Controllers\Auth\AdminSessionController;
 use App\Http\Controllers\Auth\StudentTokenAuthController;
+use App\Http\Controllers\BrandingImageController;
 use App\Http\Controllers\Internal\VideoProcessingController;
 use App\Http\Controllers\LessonAttachmentController;
 use App\Http\Controllers\Student\AccountController;
@@ -37,6 +40,8 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
+Route::get('/brand-assets/{image}', [BrandingImageController::class, 'show'])->where('image', '[a-fA-F0-9-]{36}\\.(jpg|png)')->name('branding.image');
+Route::get('/site.webmanifest', [SiteSettingController::class, 'manifest'])->name('branding.manifest');
 
 Route::middleware('guest:student')->group(function (): void {
     Route::get('/student/login', fn () => view('auth.student-login'))->name('student.login');
@@ -180,14 +185,20 @@ Route::middleware(['auth:web', 'admin.active'])->prefix('admin')->name('admin.')
         Route::get('/student-progress/{student}', [StudentProgressController::class, 'show'])->whereNumber('student')->name('student-progress.show');
     });
     Route::middleware('permission:students.manage')->group(function (): void {
+        Route::get('/students/{student}/renew', [StudentAccessController::class, 'edit'])->name('students.renew.edit');
+        Route::put('/students/{student}/renew', [StudentAccessController::class, 'update'])->name('students.renew.update');
+        Route::post('/students/{student}/subscription-reminder', [StudentAccessController::class, 'remind'])->middleware('throttle:5,1')->name('students.subscription-reminder');
         Route::post('/students', [StudentController::class, 'store'])->name('students.store');
         Route::get('/students/{student}/edit', [StudentController::class, 'edit'])->name('students.edit');
         Route::put('/students/{student}', [StudentController::class, 'update'])->name('students.update');
         Route::delete('/students/{student}', [StudentController::class, 'destroy'])->name('students.destroy');
-        Route::post('/students/{student}/token/reveal', [StudentController::class, 'revealToken'])->name('students.token.reveal');
+        Route::post('/students/{student}/token/reveal', [StudentController::class, 'revealToken'])->middleware('throttle:20,1')->name('students.token.reveal');
         Route::post('/students/{student}/token', [StudentController::class, 'regenerate'])->name('students.token');
         Route::patch('/students/{student}/status', [StudentController::class, 'status'])->name('students.status');
     });
+
+    Route::get('/settings', [SiteSettingController::class, 'edit'])->middleware('permission:settings.manage')->name('settings.edit');
+    Route::put('/settings', [SiteSettingController::class, 'update'])->middleware('permission:settings.manage')->name('settings.update');
 
     Route::middleware('permission:admins.manage')->group(function (): void {
         Route::resource('admins', AdminUserController::class)->except(['destroy']);

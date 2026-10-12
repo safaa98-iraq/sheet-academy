@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Policies\CoursePolicy;
 use App\Policies\LessonPolicy;
 use App\Policies\StudentPolicy;
+use App\Services\SiteBrandService;
 use App\Services\StudentAuditService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -55,6 +56,7 @@ class AppServiceProvider extends ServiceProvider
         });
         RateLimiter::for('student-progress', fn (Request $request): Limit => Limit::perMinute(30)->by(($request->user('student')?->id ?? 'guest').'|'.$request->ip()));
         RateLimiter::for('student-media', fn (Request $request): Limit => Limit::perMinute(240)->by(($request->user('student')?->id ?? 'guest').'|'.$request->ip()));
+        View::composer('*', fn ($view) => $view->with('siteBrand', app(SiteBrandService::class)->current()));
         View::composer('student.layout', function ($view): void {
             $view->with('studentUnreadCount', auth('student')->user()?->unreadNotifications()->count() ?? 0);
         });

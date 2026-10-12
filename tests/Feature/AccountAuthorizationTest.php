@@ -36,7 +36,7 @@ class AccountAuthorizationTest extends TestCase
         $this->actingAs($admin, 'web')->get('/admin/students')->assertForbidden();
     }
 
-    public function test_super_admin_can_create_a_student_and_token_is_only_shown_once(): void
+    public function test_super_admin_can_create_a_student_and_copy_the_encrypted_token_later(): void
     {
         $admin = User::factory()->create(['is_super_admin' => true]);
         $course = Course::factory()->create();
@@ -53,7 +53,7 @@ class AccountAuthorizationTest extends TestCase
         $this->assertSame(hash('sha256', $plainTextToken), $token->token_hash);
 
         $this->get('/admin/students')->assertOk()->assertSee($plainTextToken);
-        $this->get('/admin/students')->assertOk()->assertDontSee($plainTextToken);
+        $this->get('/admin/students')->assertOk()->assertSee($plainTextToken);
     }
 
     public function test_frozen_student_session_is_closed_on_next_request(): void

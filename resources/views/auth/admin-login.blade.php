@@ -20,7 +20,7 @@
             <button class="btn primary full login-submit" type="submit">دخول لوحة الأستاذ<x-icon name="arrow-left"/></button>
             <div class="login-divider">إدارة تجربة التعلّم</div>
         </form>
-        <small class="login-copyright">© {{ date('Y') }} عيادة التعلّم. مساحة تصنع فرقاً.</small>
+        <small class="login-copyright">© {{ date('Y') }} {{ $siteBrand['name'] }}. مساحة تصنع فرقاً.</small>
     </section>
 </main>
 </body>

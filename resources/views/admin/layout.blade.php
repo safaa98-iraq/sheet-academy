@@ -9,6 +9,7 @@
         ['students', 'إدارة الطلاب', 'user', 'admin.students.index', 'students.view'],
         ['student-progress', 'تقدم الطلاب', 'chart', 'admin.student-progress', 'students.view'],
         ['admins', 'الفريق والصلاحيات', 'shield', 'admin.admins.index', 'admins.manage'],
+        ['settings', 'إعدادات الموقع', 'settings', 'admin.settings.edit', 'settings.manage'],
         ['activity', 'سجل النشاط', 'clock', 'admin.activity', 'audit.view'],
     ];
 @endphp
@@ -18,7 +19,7 @@
 <body class="admin-body" data-storage-scope="instructor">
     <button class="admin-backdrop" data-admin-nav-close aria-label="إغلاق القائمة" hidden></button>
     <aside class="instructor-sidebar" id="instructor-sidebar" aria-label="قائمة الأستاذ">
-        <a class="instructor-brand" href="{{ route('admin.dashboard') }}"><span class="instructor-brand-mark"><x-icon name="tooth" /></span><span>عيادة التعلّم<small>منصة تعليم طب الأسنان</small></span></a>
+        <a class="instructor-brand" href="{{ route('admin.dashboard') }}"><span class="instructor-brand-mark"><x-site-brand-mark/></span><span>{{ $siteBrand['name'] }}<small>{{ $siteBrand['tagline'] }}</small></span></a>
         <div class="instructor-space"><span>مساحة الأستاذ</span><span class="badge">{{ $isPreview ? 'معاينة' : 'إدارة' }}</span></div>
         <nav class="instructor-nav">
             @foreach($navigation as [$key, $label, $icon, $routeName, $permission])
@@ -53,7 +54,7 @@
             @if(!request()->routeIs('admin.lessons.edit','admin.courses.lessons.create','admin.students.create','admin.students.edit','admin.profile.*','admin.notifications.*'))<x-step-tip>{{ match(true) { request()->routeIs('admin.grade-levels.*') => 'ابدأ باسم المرحلة الدراسية؛ ستظهر عند إضافة المواد وحسابات الطلاب.', request()->routeIs('admin.courses.*') => 'اختر المرحلة، اكتب اسم المادة، ثم انشرها أو احفظها كمسودة. أضف المحاضرات من صفحة المحاضرات.', request()->routeIs('admin.students.*') => 'افتح ملف الطالب لإدارة اشتراكه ومواده ورمز دخوله، مع الاحتفاظ بتقدّمه.', request()->routeIs('admin.student-progress*') => 'اختر الطالب أو المادة لتعرف آخر محاضرة ونقطة توقفه.', request()->routeIs('admin.admins.*','admin.roles.*') => 'امنح كل عضو صلاحيات المهام التي يحتاجها فقط.', default => 'اختر القسم من القائمة؛ التغييرات التي تحفظها تظهر مباشرة في المنصة.' } }}</x-step-tip>@endif
             @yield('content')
         </main>
-        <footer class="instructor-footer"><span>عيادة التعلّم · مساحة تصنع فرقاً</span><span>{{ $isPreview ? 'بيانات تجريبية · تحفظ تغييرات المعاينة على جهازك' : 'مساحة إدارة المحتوى والطلاب' }}</span></footer>
+        <footer class="instructor-footer"><span>{{ $siteBrand['name'] }} · {{ $siteBrand['tagline'] }}</span><span>{{ $isPreview ? 'بيانات تجريبية · تحفظ تغييرات المعاينة على جهازك' : 'مساحة إدارة المحتوى والطلاب' }}</span></footer>
     </div>
     <div class="admin-toast" data-admin-toast role="status" hidden></div>
     <dialog class="admin-dialog" data-admin-dialog><form method="dialog" class="admin-dialog-close"><button class="icon-btn" aria-label="إغلاق"><x-icon name="close" /></button></form><div data-admin-dialog-content></div></dialog>

@@ -34,9 +34,8 @@ class UpdateStudentRequest extends FormRequest
             'subscription_duration' => ['sometimes', 'required', Rule::in(['unlimited', '30', '90', '180', '365', 'custom'])],
             'subscription_expires_at' => ['exclude_unless:subscription_duration,custom', 'bail', 'required', 'date', new SubscriptionExpiry($student->subscription_expires_at)],
             'email' => ['nullable', 'email', 'max:190', Rule::unique('students', 'email')->ignore($student)],
-            'access_type' => ['sometimes', 'required', Rule::in(['grade', 'courses'])],
-            'grade_level_id' => ['exclude_unless:access_type,grade', 'required', 'integer', 'exists:grade_levels,id'],
-            'course_ids' => ['exclude_if:access_type,grade', 'sometimes', 'array'],
+            'access_type' => ['sometimes', 'required', Rule::in(['courses'])],
+            'course_ids' => ['sometimes', 'array'],
             'course_ids.*' => ['integer', 'distinct', Rule::exists('courses', 'id')->whereNull('deleted_at')],
         ];
     }
@@ -44,7 +43,7 @@ class UpdateStudentRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'access_type.in' => 'اختر الوصول إلى مرحلة كاملة أو مواد محددة.',
+            'access_type.in' => 'حدد المواد المشترك بها الطالب؛ المرحلة الدراسية لا تمنح وصولاً تلقائياً.',
             'grade_level_id.required' => 'اختر المرحلة الدراسية المطلوب إتاحتها.',
             'grade_level_id.exists' => 'المرحلة الدراسية غير موجودة.',
             'college.required' => 'اسم الكلية مطلوب.',

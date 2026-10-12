@@ -40,7 +40,7 @@ class NotificationController extends Controller
 
         return response()->json(['count' => $unread->count(), 'latest' => $latest ? [
             'id' => $latest->id,
-            'message' => 'محاضرة جديدة: '.($latest->data['title'] ?? 'محاضرة جديدة').' — '.($latest->data['course_title'] ?? 'موادك'),
+            'message' => ($latest->data['kind'] ?? null) === 'subscription_reminder' ? $latest->data['message'] : 'محاضرة جديدة: '.($latest->data['title'] ?? 'محاضرة جديدة').' — '.($latest->data['course_title'] ?? 'موادك'),
         ] : null])->header('Cache-Control', 'private, no-store');
     }
 }

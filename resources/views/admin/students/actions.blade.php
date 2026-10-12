@@ -13,21 +13,10 @@
         @endif
     </div>
     <p class="muted">التجميد والإيقاف يمنعان الوصول مع الاحتفاظ بالبيانات والتقدّم. استخدم إعادة التفعيل للسماح بالدخول مجدداً.</p>
-    <h3>رمز الدخول</h3>
-    <p class="muted">الرمز محفوظ كتجزئة فقط ويظهر مرة واحدة عند إصداره. إذا فُقد، أصدر رمزاً جديداً.</p>
-    <details class="student-token-options"><summary><x-icon name="key"/> إصدار توكن جديد وتحديد صلاحيته</summary>
-    @if($student->status === 'active')
-        <p class="muted">الرمز الجديد يلغي السابق وجلساته، ويظهر مرة واحدة بعد الإصدار.</p>
-        <form method="post" action="{{ route('admin.students.token', $student) }}" data-confirm="سيُلغى رمز الدخول السابق. هل تريد إصدار رمز جديد؟">
-            @csrf
-            <label>انتهاء صلاحية التوكن (اختياري)<input type="datetime-local" name="expires_at" value="{{ old('expires_at') }}"></label>
-            <label>عدد الأجهزة المتزامنة<select name="device_limit">@foreach(range(1, 1) as $limit)<option value="{{ $limit }}" @selected((int) old('device_limit', $student->tokens->first()?->device_limit ?? config('audit.device_limit', 1)) === $limit)>{{ $limit }}</option>@endforeach</select></label>
-            <button class="btn primary" style="margin-top:16px"><x-icon name="key"/><span>إصدار توكن جديد</span></button>
-        </form>
-    @else
-        <p class="muted">أعد تفعيل الحساب أولاً لإصدار توكن جديد. يبقى الدخول ممنوعاً أثناء التجميد أو الإيقاف.</p>
-    @endif
-    </details>
+    <h3>رمز الدخول والتجديد</h3>
+    @if($visibleToken ?? null)<div class="token-table-cell"><code id="profile-student-token" dir="ltr">{{ $visibleToken }}</code><button type="button" class="btn small" data-copy-target="#profile-student-token"><x-icon name="copy"/><span data-copy-label>نسخ التوكن</span></button></div>@else<button type="button" class="btn" data-reveal-student-token="{{ route('admin.students.token.reveal', $student) }}" data-student-name="{{ $student->name }}">عرض التوكن ونسخه</button>@endif
+    <p class="muted">الرمز مشفّر في قاعدة البيانات، وتسجيل الدخول يتحقق من تجزئته. النسخ متاح للأستاذ والأدمن المخوّل فقط.</p>
+    <a class="btn primary" href="{{ route('admin.students.renew.edit', $student) }}"><x-icon name="refresh"/>تجديد الاشتراك أو إصدار توكن جديد</a>
 </section>
 @include('admin.students.token-dialog')
 @endcan
