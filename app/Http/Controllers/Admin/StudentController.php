@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\UpdateStudentStatusRequest;
 use App\Models\Course;
 use App\Models\GradeLevel;
 use App\Models\Student;
+use App\Services\StudentAuditService;
 use App\Services\StudentTokenService;
 use App\Support\LearningUi;
 use Illuminate\Http\JsonResponse;
@@ -23,7 +24,7 @@ class StudentController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request): View
+    public function index(Request $request, StudentTokenService $tokens): View
     {
         $this->authorize('viewAny', Student::class);
         $students = Student::query()
@@ -37,7 +38,9 @@ class StudentController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return view('admin.students.index', ['students' => $students, 'issuedToken' => session()->pull('issued_student_token')]);
+        $visibleTokens = $request->user('web')->hasPermissionTo('students.manage') ? $students->getCollection()->mapWithKeys(fn (Student $student): array => [$student->id => $student->tokens->first() ? $tokens->reveal($student->tokens->first()) : null])->all() : [];
+
+        return view('admin.students.index', ['visibleTokens' => $visibleTokens, 'students' => $students, 'issuedToken' => $request->user('web')->hasPermissionTo('students.manage') ? session()->pull('issued_student_token') : null]);
     }
 
     /**
@@ -66,22 +69,22 @@ class StudentController extends Controller
                 'subscription_expires_at' => $this->subscriptionEnd($data),
                 'status' => 'active',
                 'created_by' => $request->user('web')->id,
-                'grade_level_id' => $data['grade_level_id'] ?? null,
+                'grade_level_id' => $data['access_type'] === 'grade' ? $data['grade_level_id'] : null,
             ]);
-            $student->courses()->sync(($data['access_type'] ?? 'courses') === 'grade' ? [] : ($data['course_ids'] ?? []));
-            $issued = $tokens->issue($student, $request->user('web'), isset($data['expires_at']) ? Carbon::parse($data['expires_at']) : null, isset($data['device_limit']) ? (int) $data['device_limit'] : null);
+            $student->courses()->sync($data['access_type'] === 'grade' ? [] : ($data['course_ids'] ?? []));
+            $issued = $tokens->issue($student, $request->user('web'), isset($data['expires_at']) ? Carbon::parse($data['expires_at']) : $student->subscription_expires_at, isset($data['device_limit']) ? (int) $data['device_limit'] : null);
             session()->flash('issued_student_token', ['student' => $student->name, 'token' => $issued['token']]);
 
             return $student;
         });
 
-        return redirect()->route('admin.students.index')->with('status', 'تم إنشاء حساب الطالب. يظهر رمز الوصول مرة واحدة. انسخه الآن.');
+        return redirect()->route('admin.students.index')->with('status', 'تم إنشاء حساب الطالب؛ يمكن نسخ رمز الدخول من الجدول في أي وقت.');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Student $student): View
+    public function show(Student $student, Request $request, StudentTokenService $tokens): View
     {
         $this->authorize('view', $student);
 
@@ -98,7 +101,7 @@ class StudentController extends Controller
             ]];
         });
 
-        return view('admin.students.show', ['accessibleCourses' => $accessibleCourses, 'courseProgress' => $courseProgress, 'student' => $student->load(['gradeLevel', 'studyGradeLevel', 'courses', 'devices' => fn ($query) => $query->latest('last_seen_at'), 'tokens' => fn ($query) => $query->latest()])]);
+        return view('admin.students.show', ['accessibleCourses' => $accessibleCourses, 'courseProgress' => $courseProgress, 'visibleToken' => $request->user('web')->hasPermissionTo('students.manage') && ($latestToken = $student->tokens()->latest('id')->first()) ? $tokens->reveal($latestToken) : null, 'student' => $student->load(['gradeLevel', 'studyGradeLevel', 'courses', 'devices' => fn ($query) => $query->latest('last_seen_at'), 'tokens' => fn ($query) => $query->latest()])]);
     }
 
     /**
@@ -119,11 +122,20 @@ class StudentController extends Controller
         $this->authorize('update', $student);
         $data = $request->validated();
         DB::transaction(function () use ($student, $data): void {
-            $student->update(['name' => $data['name'], 'email' => $data['email'] ?? null, 'grade_level_id' => $data['grade_level_id'] ?? null,
+            $student = Student::whereKey($student->id)->lockForUpdate()->firstOrFail();
+            $student->fill(['name' => $data['name'], 'email' => $data['email'] ?? null, 'grade_level_id' => $data['access_type'] === 'grade' ? $data['grade_level_id'] : null,
                 'college' => $data['college'] ?? $student->college, 'phone' => $data['phone'] ?? $student->phone,
-                'study_grade_level_id' => $data['study_grade_level_id'] ?? $student->study_grade_level_id,
-                'subscription_expires_at' => array_key_exists('subscription_duration', $data) ? $this->subscriptionEnd($data) : $student->subscription_expires_at]);
-            $student->courses()->sync(($data['access_type'] ?? 'courses') === 'grade' ? [] : ($data['course_ids'] ?? []));
+                'study_grade_level_id' => $data['study_grade_level_id'] ?? ($data['grade_level_id'] ?? $student->study_grade_level_id),
+                'subscription_expires_at' => array_key_exists('subscription_duration', $data) ? $this->subscriptionEnd($data, $student->subscription_expires_at) : $student->subscription_expires_at]);
+            if ($student->isDirty('subscription_expires_at')) {
+                $student->forceFill(['subscription_expiry_notified_at' => null, 'subscription_reminded_at' => null, 'subscription_reminder_for' => null]);
+            }
+            $subscriptionChanged = $student->isDirty('subscription_expires_at');
+            $student->save();
+            if ($subscriptionChanged) {
+                $student->tokens()->whereIn('status', ['active', 'frozen', 'suspended'])->update(['expires_at' => $student->subscription_expires_at, 'expiry_notified_at' => null]);
+            }
+            $student->courses()->sync($data['access_type'] === 'grade' ? [] : ($data['course_ids'] ?? []));
         });
 
         return redirect()->route('admin.students.index')->with('status', 'تم تحديث بيانات الطالب.');
@@ -140,9 +152,16 @@ class StudentController extends Controller
         return redirect()->route('admin.students.index')->with('status', 'تم حذف حساب الطالب.');
     }
 
-    private function subscriptionEnd(array $data): ?Carbon
+    private function subscriptionEnd(array $data, ?Carbon $currentExpiry = null): ?Carbon
     {
         $duration = $data['subscription_duration'] ?? 'unlimited';
+        if ($duration === 'custom' && preg_match('/\A\d{4}-\d{2}-\d{2}\z/', $data['subscription_expires_at']) === 1) {
+            if ($currentExpiry?->copy()->timezone('Asia/Baghdad')->toDateString() === $data['subscription_expires_at']) {
+                return $currentExpiry;
+            }
+
+            return Carbon::parse($data['subscription_expires_at'], 'Asia/Baghdad')->endOfDay()->utc();
+        }
 
         return match ($duration) {
             'unlimited' => null,
@@ -151,11 +170,16 @@ class StudentController extends Controller
         };
     }
 
-    public function revealToken(Student $student): JsonResponse
+    public function revealToken(Student $student, StudentTokenService $tokens, Request $request): JsonResponse
     {
         $this->authorize('update', $student);
 
-        return response()->json(['message' => 'رمز الدخول محفوظ كتجزئة فقط ويظهر مرة واحدة عند إصداره. أصدر رمزاً جديداً إذا فقدته.'], 422)->header('Cache-Control', 'private, no-store');
+        $record = $student->tokens()->latest('id')->first();
+        $plain = $record ? $tokens->reveal($record) : null;
+        app(StudentAuditService::class)->record($student, 'token_revealed_by_admin', $request, ['actor_id' => $request->user('web')->id]);
+
+        return $plain !== null ? response()->json(['token' => $plain])->header('Cache-Control', 'private, no-store')
+            : response()->json(['message' => 'الرمز القديم محفوظ كتجزئة فقط. استبدله من صفحة التجديد مرة واحدة ليصبح قابلاً للنسخ.'], 422)->header('Cache-Control', 'private, no-store');
     }
 
     public function regenerate(Student $student, StudentTokenService $tokens, Request $request): RedirectResponse
@@ -176,7 +200,7 @@ class StudentController extends Controller
         ]);
         $deviceLimit = (int) ($data['device_limit'] ?? $student->tokens()->latest('id')->value('device_limit'));
         $issued = $tokens->issue($student, $request->user('web'),
-            expiresAt: isset($data['expires_at']) ? Carbon::parse($data['expires_at']) : null,
+            expiresAt: isset($data['expires_at']) ? Carbon::parse($data['expires_at']) : ($student->subscriptionIsActive() ? $student->subscription_expires_at : null),
             deviceLimit: $deviceLimit > 0 ? $deviceLimit : null,
         );
         session()->flash('issued_student_token', ['student' => $student->name, 'token' => $issued['token']]);

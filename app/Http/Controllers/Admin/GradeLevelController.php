@@ -5,8 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreGradeLevelRequest;
 use App\Models\GradeLevel;
-use App\Models\Student;
+use App\Services\ContentDeletionService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class GradeLevelController extends Controller
@@ -40,13 +41,10 @@ class GradeLevelController extends Controller
         return redirect()->route('admin.grade-levels.index')->with('status', 'تم حفظ المرحلة الصفية.');
     }
 
-    public function destroy(GradeLevel $gradeLevel): RedirectResponse
+    public function destroy(Request $request, GradeLevel $gradeLevel, ContentDeletionService $deletion): RedirectResponse
     {
-        if ($gradeLevel->courses()->withTrashed()->exists() || Student::where('grade_level_id', $gradeLevel->id)->exists()) {
-            return back()->withErrors(['grade_level' => 'لا يمكن حذف مرحلة مرتبطة بمواد أو طلاب. انقل المواد والطلاب إلى مرحلة أخرى أولاً.']);
-        }
-        $gradeLevel->delete();
+        $deletion->delete($request, $gradeLevel);
 
-        return redirect()->route('admin.grade-levels.index')->with('status', 'تم حذف المرحلة الصفية.');
+        return redirect()->route('admin.grade-levels.index')->with('status', 'أُرشف الصف ومواده ودروسه وحُجب محتواه عن الطلاب. بقيت حساباتهم وتقدّمهم محفوظين.');
     }
 }

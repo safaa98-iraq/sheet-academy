@@ -24,6 +24,7 @@ class StoreLessonRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'creation_key' => ['sometimes', 'uuid'],
             'title' => ['required', 'string', 'max:180'],
             'type' => ['required', 'in:video,text,file,document,pdf,image'],
             'duration_seconds' => ['nullable', 'integer', 'min:0', 'max:86400'],

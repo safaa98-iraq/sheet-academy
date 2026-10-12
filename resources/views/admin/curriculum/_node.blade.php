@@ -47,9 +47,13 @@
                 <input type="hidden" name="publication_status" value="draft"><button class="btn small">＋ إضافة {{ $typeLabels[$childType] }}</button>
             </form>
         @endif
-        <form method="post" action="{{ route('admin.curriculum-nodes.destroy', $node) }}" data-confirm="سيُحذف المحتوى والفروع تحته حذفاً ناعماً. هل تريد المتابعة؟">
+        @if($node->type === 'lesson' && $node->lesson)
+        <a class="btn small" href="{{ route('admin.lessons.delete', $node->lesson) }}"><x-icon name="trash"/>حذف الدرس</a>
+        @else
+        <form method="post" action="{{ route('admin.curriculum-nodes.destroy', $node) }}" data-confirm="سيختفي هذا القسم وجميع الدروس والفيديوهات والمرفقات تحته عن الطلاب. ستبقى حساباتهم وتقدّمهم محفوظين، ولا يوجد زر استرجاع حالياً. هل تؤكد الحذف؟">
             @csrf @method('DELETE')<button class="btn small">حذف</button>
         </form>
+        @endif
     </div>
     @if($node->children->isNotEmpty())
         <ol class="curriculum-tree" data-curriculum-list data-parent-id="{{ $node->id }}">

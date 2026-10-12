@@ -11,3 +11,6 @@ Artisan::command('inspire', function () {
 Schedule::command('app:prune-student-document-pages')->daily()->withoutOverlapping();
 
 Schedule::command('app:notify-published-lectures')->everyMinute()->withoutOverlapping(10);
+Schedule::command('app:notify-expired-student-access')->everyMinute()->withoutOverlapping(10);
+
+Schedule::command('app:notify-upcoming-subscriptions')->everyMinute()->withoutOverlapping(10);

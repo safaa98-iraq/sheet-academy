@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Models\Student;
 use App\Models\StudentToken;
 use App\Models\User;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class StudentTokenService
 {
@@ -25,6 +27,7 @@ class StudentTokenService
             } while (StudentToken::where('token_hash', hash('sha256', $plainTextToken))->exists());
             $record = $student->tokens()->create([
                 'token_hash' => hash('sha256', $plainTextToken),
+                'encrypted_token' => $plainTextToken,
                 'status' => 'active',
                 'device_limit' => $deviceLimit,
                 'expires_at' => $expiresAt,
@@ -33,6 +36,22 @@ class StudentTokenService
 
             return ['token' => $plainTextToken, 'record' => $record];
         });
+    }
+
+    public function reveal(StudentToken $record): ?string
+    {
+        try {
+            $plain = $record->encrypted_token;
+            if (! is_string($plain) || ! hash_equals($record->token_hash, hash('sha256', $plain))) {
+                return null;
+            }
+
+            return $plain;
+        } catch (DecryptException) {
+            Log::warning('student_token.decrypt_failed', ['token_id' => $record->id]);
+
+            return null;
+        }
     }
 
     private function generateToken(): string

@@ -6,7 +6,9 @@ import { initProtection, setProtection } from './protection';
 import { initPwa } from './pwa';
 import './admin-ui';
 import './publisher';
+import { initializeNotificationPolling } from './notification-polling';
 import * as tus from 'tus-js-client';
+import {retryUpload, uploadForm, uploadRetryDelays, videoUploadError, videoUploadMetadata} from './publisher-transfer';
 
 const qs = (selector, root = document) => root.querySelector(selector);
 const qsa = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -126,20 +128,7 @@ window.addEventListener('pagehide', () => {
     }
 });
 
-const unreadAuditCount = qs('[data-audit-alert-count]');
-if (unreadAuditCount) {
-    const checkAuditNotifications = async () => {
-        try {
-            const response = await fetch('/admin/notifications/unread-count', {credentials: 'same-origin', headers: {'Accept': 'application/json'}});
-            if (!response.ok) return;
-            const {count} = await response.json();
-            unreadAuditCount.textContent = count > 99 ? '99+' : String(count);
-            unreadAuditCount.hidden = count < 1;
-        } catch {}
-    };
-    checkAuditNotifications();
-    window.setInterval(checkAuditNotifications, 15000);
-}
+initializeNotificationPolling();
 
 const setTheme = (theme) => {
     const dark = theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
@@ -401,13 +390,17 @@ qsa('[data-video-upload]').forEach(panel => {
             fileInput.disabled = true;
             const fingerprint = await fingerprintFile(file);
             message.textContent = 'جارٍ تجهيز الرفع القابل للاستئناف…';
+            const session = await retryUpload(() => uploadForm(panel.dataset.startUrl, null, {csrf: panel.dataset.csrf, headers: {
+                'Tus-Resumable': '1.0.0', 'Upload-Length': String(file.size), 'Upload-Metadata': videoUploadMetadata(file, fingerprint),
+            }}));
             await new Promise((resolve, reject) => {
                 const upload = new tus.Upload(file, {
                     endpoint: panel.dataset.startUrl,
+                    uploadUrl: session.upload_url,
                     fingerprint: async () => `academy:${panel.dataset.startUrl}:${fingerprint}`,
                     removeFingerprintOnSuccess: true,
-                    chunkSize: 4 * 1024 * 1024,
-                    retryDelays: [0, 1000, 3000, 5000, 10000],
+                    chunkSize: 512 * 1024,
+                    retryDelays: [0, ...uploadRetryDelays],
                     metadata: {filename: file.name, fingerprint},
                     headers: {'X-CSRF-TOKEN': panel.dataset.csrf, 'Accept': 'application/json'},
                     onProgress: (bytesUploaded, bytesTotal) => {
@@ -415,14 +408,13 @@ qsa('[data-video-upload]').forEach(panel => {
                         progress.value = percent;
                         message.textContent = `رُفع ${percent}٪`;
                     },
-                    onError: reject,
+                    onShouldRetry: error => {const status = error.originalResponse?.getStatus(); return !status || [408, 409, 423, 429].includes(status) || status >= 500;},
+                    onError: error => reject(new Error(videoUploadError(error))),
                     onSuccess: resolve,
                 });
-                upload.findPreviousUploads().then(previousUploads => {
-                    if (previousUploads.length) upload.resumeFromPreviousUpload(previousUploads[0]);
-                    upload.start();
-                }).catch(reject);
+                upload.start();
             });
+            await retryUpload(() => uploadForm(session.complete_url, null, {csrf: panel.dataset.csrf}));
             message.textContent = 'اكتمل الرفع. يجري إدراج الفيديو في قائمة المعالجة.';
             let status;
             for (let count = 0; count < 120; count++) {
@@ -587,9 +579,29 @@ qsa('[data-student-access]').forEach(panel => {
         panel.querySelector('[data-access-grade]').hidden = !grade;
         panel.querySelector('[data-access-courses]').hidden = grade;
         const select = panel.querySelector('[name="grade_level_id"]');
-        select.disabled = !grade; select.required = grade;
+        select.disabled = !grade;
+        const studyGrade = document.querySelector('[name="study_grade_level_id"]');
+        if (studyGrade && grade) select.value = studyGrade.value;
+        const label = panel.querySelector('[data-access-grade-name]');
+        if (label && studyGrade) label.textContent = studyGrade.selectedOptions[0]?.textContent || 'اختر الصف من بيانات الطالب أعلاه';
         panel.querySelectorAll('[name="course_ids[]"]').forEach(input => input.disabled = grade);
     };
     panel.addEventListener('change', updateAccessFields);
+    document.querySelector('[name="study_grade_level_id"]')?.addEventListener('change', updateAccessFields);
     updateAccessFields();
 });
+
+const contentDeleteDialog = qs('[data-content-delete-dialog]');
+if (contentDeleteDialog) {
+    contentDeleteDialog.removeAttribute('open');
+    contentDeleteDialog.showModal();
+    qs('#delete-heading', contentDeleteDialog).focus({preventScroll: true});
+    contentDeleteDialog.scrollTop = 0;
+    contentDeleteDialog.addEventListener('cancel', event => {event.preventDefault(); location.assign(contentDeleteDialog.dataset.cancelUrl);});
+    const acknowledgement = qs('[data-delete-acknowledgement]', contentDeleteDialog);
+    const finalDelete = qs('[data-delete-final]', contentDeleteDialog);
+    const updateDeleteConsent = () => {finalDelete.disabled = !acknowledgement.checked;};
+    acknowledgement.addEventListener('change', updateDeleteConsent);
+    updateDeleteConsent();
+    contentDeleteDialog.querySelector('form').addEventListener('submit', () => {finalDelete.disabled = true;});
+}

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Rules\SubscriptionExpiry;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -21,18 +22,31 @@ class StoreStudentRequest extends FormRequest
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
+    protected function prepareForValidation(): void
+    {
+        $student = $this->route('student');
+        $explicitMode = $this->input('access_type');
+        $mode = $explicitMode ?? ($this->has('course_ids') ? 'courses' : ($student ? ($student->grade_level_id ? 'grade' : 'courses') : ($this->filled('study_grade_level_id') ? 'grade' : 'courses')));
+        $this->merge(['access_type' => $mode]);
+        if ($mode === 'grade') {
+            $this->merge(['grade_level_id' => $this->input('study_grade_level_id') ?: $this->input('grade_level_id') ?: $student?->study_grade_level_id ?: $student?->grade_level_id]);
+        } elseif ($student && $explicitMode === null && ! $this->has('course_ids')) {
+            $this->merge(['course_ids' => $student->courses()->pluck('courses.id')->all()]);
+        }
+    }
+
     public function rules(): array
     {
         return [
             'name' => ['required', 'string', 'max:150'],
             'college' => ['sometimes', 'required', 'string', 'max:190'],
             'phone' => ['sometimes', 'required', 'string', 'max:30', 'regex:/\A[+0-9 ()-]{7,30}\z/'],
-            'study_grade_level_id' => ['sometimes', 'required', 'integer', 'exists:grade_levels,id'],
+            'study_grade_level_id' => ['sometimes', 'required', 'integer', Rule::exists('grade_levels', 'id')->whereNull('deleted_at')],
             'subscription_duration' => ['sometimes', 'required', Rule::in(['unlimited', '30', '90', '180', '365', 'custom'])],
-            'subscription_expires_at' => ['nullable', 'required_if:subscription_duration,custom', 'date', 'after:now'],
+            'subscription_expires_at' => ['exclude_unless:subscription_duration,custom', 'bail', 'required', 'date', new SubscriptionExpiry],
             'email' => ['nullable', 'email', 'max:190', Rule::unique('students', 'email')],
             'access_type' => ['sometimes', 'required', Rule::in(['grade', 'courses'])],
-            'grade_level_id' => ['exclude_unless:access_type,grade', 'required', 'integer', 'exists:grade_levels,id'],
+            'grade_level_id' => ['exclude_unless:access_type,grade', 'required', 'integer', Rule::exists('grade_levels', 'id')->whereNull('deleted_at')],
             'course_ids' => ['exclude_if:access_type,grade', 'sometimes', 'array'],
             'course_ids.*' => ['integer', 'distinct', Rule::exists('courses', 'id')->whereNull('deleted_at')],
             'expires_at' => ['nullable', 'date', 'after:now'],
@@ -43,14 +57,15 @@ class StoreStudentRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'access_type.in' => 'اختر الوصول إلى مرحلة كاملة أو مواد محددة.',
+            'access_type.in' => 'اختر الوصول التلقائي حسب الصف أو مواد محددة من الأستاذ.',
             'grade_level_id.required' => 'اختر المرحلة الدراسية المطلوب إتاحتها.',
             'grade_level_id.exists' => 'المرحلة الدراسية غير موجودة.',
             'college.required' => 'اسم الكلية مطلوب.',
             'phone.required' => 'رقم الهاتف الشخصي مطلوب.',
             'phone.regex' => 'أدخل رقم هاتف صحيحاً، مثل +9647701234567.',
             'study_grade_level_id.required' => 'اختر المرحلة الدراسية للطالب.',
-            'subscription_expires_at.after' => 'اختر تاريخ انتهاء في المستقبل لتجديد الاشتراك.',
+            'subscription_expires_at.required' => 'اختر تاريخ انتهاء الاشتراك من التقويم.',
+            'subscription_expires_at.date' => 'أدخل تاريخ انتهاء صحيحاً.',
             'name.required' => 'حقل اسم الطالب مطلوب.',
             'email.email' => 'أدخل بريداً إلكترونياً صحيحاً.',
             'email.unique' => 'هذا البريد مسجّل لطالب آخر.',

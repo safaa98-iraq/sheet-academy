@@ -1,19 +1,27 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\ArchivedContentController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\ContentDeletionController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\CurriculumController;
 use App\Http\Controllers\Admin\GradeLevelController;
 use App\Http\Controllers\Admin\LessonController;
+use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\RolePermissionController;
+use App\Http\Controllers\Admin\SiteSettingController;
+use App\Http\Controllers\Admin\StudentAccessController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\StudentProgressController;
 use App\Http\Controllers\Admin\VideoUploadController;
 use App\Http\Controllers\Auth\AdminSessionController;
 use App\Http\Controllers\Auth\StudentTokenAuthController;
+use App\Http\Controllers\BrandingImageController;
 use App\Http\Controllers\Internal\VideoProcessingController;
 use App\Http\Controllers\LessonAttachmentController;
+use App\Http\Controllers\Student\AccountController;
 use App\Http\Controllers\Student\DocumentViewerController;
 use App\Http\Controllers\Student\LessonProgressController;
 use App\Http\Controllers\Student\NotificationController;
@@ -34,18 +42,26 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
+Route::get('/brand-assets/{image}', [BrandingImageController::class, 'show'])->where('image', '[a-fA-F0-9-]{36}\\.(jpg|png)')->name('branding.image');
+Route::get('/site.webmanifest', [SiteSettingController::class, 'manifest'])->name('branding.manifest');
 
 Route::middleware('guest:student')->group(function (): void {
-    Route::get('/login', fn () => view('auth.student-login'))->name('student.login');
-    Route::post('/login', [StudentTokenAuthController::class, 'store'])->middleware('throttle:student-token-login')->name('student.login.store');
+    Route::get('/student/login', fn () => view('auth.student-login'))->name('student.login');
+    Route::post('/student/login', [StudentTokenAuthController::class, 'store'])->middleware('throttle:student-token-login')->name('student.login.store');
+    Route::get('/login', fn () => view('auth.student-login'));
+    Route::post('/login', [StudentTokenAuthController::class, 'store'])->middleware('throttle:student-token-login');
 });
 
 Route::middleware('guest:web')->group(function (): void {
-    Route::get('/admin/login', fn () => view('auth.admin-login'))->name('admin.login');
-    Route::post('/admin/login', [AdminSessionController::class, 'store'])->middleware('throttle:admin-login')->name('admin.login.store');
+    Route::get('/professor/login', fn () => view('auth.admin-login'))->name('admin.login');
+    Route::post('/professor/login', [AdminSessionController::class, 'store'])->middleware('throttle:admin-login')->name('admin.login.store');
+    Route::get('/admin/login', fn () => view('auth.admin-login'));
+    Route::post('/admin/login', [AdminSessionController::class, 'store'])->middleware('throttle:admin-login');
 });
 
 Route::middleware(['auth:student', 'student.token', 'student.device', 'student.agreement'])->group(function (): void {
+    Route::get('/student/account', [AccountController::class, 'show'])->name('student.account');
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->middleware('throttle:30,1')->name('student.notifications.unread-count');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('student.notifications');
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'update'])->whereUuid('notification')->name('student.notifications.read');
     Route::get('/student-agreement', [StudentAgreementController::class, 'show'])->name('student.agreement.show');
@@ -148,6 +164,8 @@ Route::middleware(['auth:student', 'student.token', 'student.device', 'student.a
 
 Route::middleware(['auth:web', 'admin.active'])->prefix('admin')->name('admin.')->group(function (): void {
     Route::post('/logout', [AdminSessionController::class, 'destroy'])->name('logout');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [ProfileController::class, 'update'])->middleware('throttle:6,1')->name('profile.update');
     Route::get('/', function (Request $request) {
         abort_unless($request->user('web')->hasPermissionTo('dashboard.view'), 403);
 
@@ -169,14 +187,21 @@ Route::middleware(['auth:web', 'admin.active'])->prefix('admin')->name('admin.')
         Route::get('/student-progress/{student}', [StudentProgressController::class, 'show'])->whereNumber('student')->name('student-progress.show');
     });
     Route::middleware('permission:students.manage')->group(function (): void {
+        Route::get('/students/{student}/renew', [StudentAccessController::class, 'edit'])->name('students.renew.edit');
+        Route::put('/students/{student}/renew', [StudentAccessController::class, 'update'])->name('students.renew.update');
+        Route::post('/students/{student}/subscription-reminder', [StudentAccessController::class, 'remind'])->middleware('throttle:5,1')->name('students.subscription-reminder');
         Route::post('/students', [StudentController::class, 'store'])->name('students.store');
         Route::get('/students/{student}/edit', [StudentController::class, 'edit'])->name('students.edit');
         Route::put('/students/{student}', [StudentController::class, 'update'])->name('students.update');
         Route::delete('/students/{student}', [StudentController::class, 'destroy'])->name('students.destroy');
-        Route::post('/students/{student}/token/reveal', [StudentController::class, 'revealToken'])->name('students.token.reveal');
+        Route::post('/students/{student}/token/reveal', [StudentController::class, 'revealToken'])->middleware('throttle:20,1')->name('students.token.reveal');
         Route::post('/students/{student}/token', [StudentController::class, 'regenerate'])->name('students.token');
         Route::patch('/students/{student}/status', [StudentController::class, 'status'])->name('students.status');
     });
+
+    Route::get('/archive', [ArchivedContentController::class, 'index'])->middleware('permission:courses.manage')->name('archive.index');
+    Route::get('/settings', [SiteSettingController::class, 'edit'])->middleware('permission:settings.manage')->name('settings.edit');
+    Route::put('/settings', [SiteSettingController::class, 'update'])->middleware('permission:settings.manage')->name('settings.update');
 
     Route::middleware('permission:admins.manage')->group(function (): void {
         Route::resource('admins', AdminUserController::class)->except(['destroy']);
@@ -186,6 +211,10 @@ Route::middleware(['auth:web', 'admin.active'])->prefix('admin')->name('admin.')
         Route::put('/roles/{role}/permissions', [RolePermissionController::class, 'update'])->name('roles.permissions');
         Route::delete('/roles/{role}', [RolePermissionController::class, 'destroy'])->name('roles.destroy');
     });
+
+    Route::get('/grade-levels/{gradeLevel}/delete', [ContentDeletionController::class, 'grade'])->middleware('permission:courses.manage')->name('grade-levels.delete');
+    Route::get('/courses/{course}/delete', [ContentDeletionController::class, 'course'])->middleware('permission:courses.manage')->name('courses.delete');
+    Route::get('/lessons/{lesson}/delete', [ContentDeletionController::class, 'lesson'])->middleware('permission:courses.manage')->name('lessons.delete');
 
     Route::resource('grade-levels', GradeLevelController::class)->only(['index'])->middleware('permission:courses.view');
     Route::resource('grade-levels', GradeLevelController::class)->except(['index', 'show'])->middleware('permission:courses.manage');
@@ -207,6 +236,7 @@ Route::middleware(['auth:web', 'admin.active'])->prefix('admin')->name('admin.')
     Route::post('/lessons/{lesson}/video-uploads', [VideoUploadController::class, 'start'])->middleware(['permission:courses.manage', 'throttle:video-upload'])->name('lessons.video-uploads.start');
     Route::match(['HEAD'], '/video-uploads/{upload}', [VideoUploadController::class, 'head'])->middleware('permission:courses.manage')->name('video-uploads.head');
     Route::patch('/video-uploads/{upload}', [VideoUploadController::class, 'chunk'])->middleware(['permission:courses.manage', 'throttle:video-upload'])->name('video-uploads.chunk');
+    Route::post('/video-uploads/{upload}/complete', [VideoUploadController::class, 'complete'])->middleware(['permission:courses.manage', 'throttle:video-upload'])->name('video-uploads.complete');
     Route::get('/lessons/{lesson}/video-status', [VideoUploadController::class, 'videoStatus'])->middleware('permission:courses.view')->name('lessons.video-status');
     Route::post('/lessons/{lesson}/video-retry', [VideoUploadController::class, 'retry'])->middleware('permission:courses.manage')->name('lessons.video-retry');
     Route::put('/lessons/{lesson}/video-resolutions', [VideoUploadController::class, 'resolutions'])->middleware('permission:courses.manage')->name('lessons.video-resolutions');
@@ -218,8 +248,9 @@ Route::middleware(['auth:web', 'admin.active'])->prefix('admin')->name('admin.')
     Route::middleware('permission:courses.manage')->resource('courses.lessons', LessonController::class)->only(['create', 'store']);
     Route::middleware('permission:courses.manage')->resource('lessons', LessonController::class)->only(['edit', 'update', 'destroy']);
     Route::get('/activity', [AuditLogController::class, 'index'])->middleware('permission:audit.view')->name('activity');
-    Route::get('/notifications/unread-count', fn (Request $request) => response()->json(['count' => $request->user('web')->unreadNotifications()->count()]))
-        ->middleware('permission:audit.view')->name('notifications.unread-count');
+    Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/unread-count', [AdminNotificationController::class, 'unreadCount'])->middleware('throttle:30,1')->name('notifications.unread-count');
+    Route::post('/notifications/{notification}/read', [AdminNotificationController::class, 'update'])->whereUuid('notification')->name('notifications.read');
 });
 
 Route::post('/internal/video-processing', [VideoProcessingController::class, 'update'])->middleware('throttle:internal-video-callback')->name('internal.video-processing.update');

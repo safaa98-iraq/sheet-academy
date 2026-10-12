@@ -40,9 +40,7 @@ class LessonPublicationService
             $course = $current->course;
             Student::query()->where('status', 'active')->where(fn ($query) => $query->whereNull('subscription_expires_at')->orWhere('subscription_expires_at', '>', now()))
                 ->where(function ($query) use ($course): void {
-                    $query->where(function ($query) use ($course): void {
-                        $query->whereNull('grade_level_id')->whereHas('courses', fn ($query) => $query->whereKey($course->id));
-                    });
+                    $query->where(fn ($custom) => $custom->whereNull('grade_level_id')->whereHas('courses', fn ($courses) => $courses->whereKey($course->id)));
                     if ($course->grade_level_id !== null) {
                         $query->orWhere('grade_level_id', $course->grade_level_id);
                     }

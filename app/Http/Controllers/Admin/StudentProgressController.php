@@ -107,13 +107,15 @@ class StudentProgressController extends Controller
     /** @param array<string, mixed> $filters */
     private function studentQuery(array $filters): Builder
     {
-        $availableCourses = DB::table('courses')->whereNull('courses.deleted_at')->where(function ($query): void {
-            $query->whereColumn('courses.grade_level_id', 'students.grade_level_id')
-                ->orWhere(function ($specific): void {
-                    $specific->whereNull('students.grade_level_id')->whereExists(function ($enrollment): void {
-                        $enrollment->selectRaw('1')->from('course_student')->whereColumn('course_student.course_id', 'courses.id')->whereColumn('course_student.student_id', 'students.id');
-                    });
+        $availableCourses = DB::table('courses')->whereNull('courses.deleted_at')->where(function ($scope): void {
+            $scope->where(function ($grade): void {
+                $grade->whereNotNull('students.grade_level_id')->whereColumn('courses.grade_level_id', 'students.grade_level_id')
+                    ->whereExists(fn ($activeGrade) => $activeGrade->selectRaw('1')->from('grade_levels')->whereColumn('grade_levels.id', 'students.grade_level_id')->whereNull('grade_levels.deleted_at'));
+            })->orWhere(function ($custom): void {
+                $custom->whereNull('students.grade_level_id')->whereExists(function ($enrollment): void {
+                    $enrollment->selectRaw('1')->from('course_student')->whereColumn('course_student.course_id', 'courses.id')->whereColumn('course_student.student_id', 'students.id');
                 });
+            });
         });
         $availableLessons = (clone $availableCourses)->join('lessons', 'lessons.course_id', '=', 'courses.id')
             ->whereNull('courses.deleted_at')->whereNull('lessons.deleted_at')

@@ -74,7 +74,7 @@ class VideoUploadController extends Controller
         $data = $request->validated();
         $upload = $uploads->start($request->user('web'), $lesson, $data['filename'], (int) $data['size'], $data['fingerprint']);
 
-        return response('', 201, [
+        return response()->json(['upload_url' => route('admin.video-uploads.head', $upload), 'complete_url' => route('admin.video-uploads.complete', $upload), 'offset' => $upload->offset], 201, [
             'Location' => route('admin.video-uploads.head', $upload), 'Tus-Resumable' => '1.0.0', 'Upload-Offset' => (string) $upload->offset,
             'Cache-Control' => 'no-store',
         ]);
@@ -118,6 +118,21 @@ class VideoUploadController extends Controller
         }
 
         return response('', 204, ['Tus-Resumable' => '1.0.0', 'Upload-Offset' => (string) $nextOffset, 'Cache-Control' => 'no-store']);
+    }
+
+    public function complete(Request $request, VideoUpload $upload, VideoUploadService $uploads, VideoProcessingGateway $gateway): JsonResponse
+    {
+        abort_unless($upload->user_id === $request->user('web')->id, 404);
+        $course = $upload->lesson->course;
+        abort_if($course === null, 404);
+        $this->authorize('update', $course);
+        $uploads->reconcileOffset($upload);
+        $video = $uploads->complete($upload, $gateway);
+        if ($video->status === 'failed') {
+            throw ValidationException::withMessages(['video' => 'الملف رُفع، لكن تعذّرت معالجته. افتح خيارات الفيديو لإعادة المعالجة دون إعادة رفعه.']);
+        }
+
+        return response()->json(['status' => $video->status])->header('Cache-Control', 'no-store');
     }
 
     public function retry(Request $request, Lesson $lesson, VideoProcessingGateway $gateway): JsonResponse

@@ -10,7 +10,7 @@
             @csrf
             <div class="login-icon"><x-icon name="layers"/></div>
             <span class="eyebrow">مساحة الأستاذ وفريق الإدارة</span>
-            <h2 id="login-title">كل التفاصيل بين يديك</h2>
+            <h2 id="login-title">تسجيل دخول البروفسور</h2>
             <p class="muted">سجّل الدخول لإدارة المحتوى ومتابعة طلابك.</p>
             @if($errors->any())<p class="error-message" role="alert">بيانات الدخول غير صحيحة.</p>@endif
             <label for="email">البريد الإلكتروني</label>
@@ -19,9 +19,8 @@
             <input id="password" name="password" type="password" autocomplete="current-password" placeholder="أدخل كلمة المرور" required>
             <button class="btn primary full login-submit" type="submit">دخول لوحة الأستاذ<x-icon name="arrow-left"/></button>
             <div class="login-divider">إدارة تجربة التعلّم</div>
-            <a class="instructor-login" href="{{ route('student.login') }}">العودة إلى دخول الطلاب<x-icon name="arrow-left"/></a>
         </form>
-        <small class="login-copyright">© {{ date('Y') }} عيادة التعلّم. مساحة تصنع فرقاً.</small>
+        <small class="login-copyright">© {{ date('Y') }} {{ $siteBrand['name'] }}. مساحة تصنع فرقاً.</small>
     </section>
 </main>
 </body>

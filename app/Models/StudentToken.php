@@ -10,13 +10,13 @@ class StudentToken extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['student_id', 'token_hash', 'status', 'device_limit', 'expires_at', 'last_used_at', 'created_by'];
+    protected $fillable = ['student_id', 'token_hash', 'status', 'device_limit', 'expires_at', 'last_used_at', 'created_by', 'encrypted_token'];
 
     protected $hidden = ['token_hash', 'encrypted_token'];
 
     protected function casts(): array
     {
-        return ['device_limit' => 'integer', 'expires_at' => 'datetime', 'last_used_at' => 'datetime'];
+        return ['encrypted_token' => 'encrypted', 'device_limit' => 'integer', 'expires_at' => 'datetime', 'last_used_at' => 'datetime', 'expiry_notified_at' => 'datetime'];
     }
 
     public function student(): BelongsTo

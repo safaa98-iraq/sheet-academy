@@ -93,7 +93,7 @@ export async function processVideo(job) {
             await runFfmpeg([
                 '-nostdin', '-protocol_whitelist', 'file,pipe,crypto', '-y', '-i', sourcePath, '-map', '0:v:0', '-map', '0:a:0?', '-vf', `scale=${width}:${height}:flags=lanczos`,
                 '-c:v', 'libx264', '-preset', process.env.FFMPEG_PRESET || 'medium', '-profile:v', 'high', '-pix_fmt', 'yuv420p',
-                '-b:v', maxrate, '-maxrate', maxrate, '-bufsize', bufsize, '-force_key_frames', 'expr:gte(t,n_forced*4)',
+                '-crf', '23', '-maxrate', maxrate, '-bufsize', bufsize, '-force_key_frames', 'expr:gte(t,n_forced*4)',
                 '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-f', 'hls', '-hls_time', '4', '-hls_playlist_type', 'vod',
                 '-hls_flags', 'independent_segments', '-hls_key_info_file', keyInfoPath,
                 '-hls_segment_filename', path.join(renditionPath, 'segment_%05d.ts'), path.join(renditionPath, 'index.m3u8'),

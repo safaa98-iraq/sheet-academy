@@ -6,6 +6,7 @@ use App\Http\Requests\Admin\UploadLessonAttachmentsRequest;
 use App\Models\Lesson;
 use App\Models\LessonAttachment;
 use App\Services\LessonAttachmentService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -14,11 +15,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LessonAttachmentController extends Controller
 {
-    public function store(UploadLessonAttachmentsRequest $request, Lesson $lesson): RedirectResponse
+    public function store(UploadLessonAttachmentsRequest $request, Lesson $lesson): RedirectResponse|JsonResponse
     {
         abort_if($lesson->course === null, 404);
         $this->authorize('update', $lesson->course);
-        app(LessonAttachmentService::class)->store($lesson, $request->validated('attachments'));
+        app(LessonAttachmentService::class)->store($lesson, $request->validated('attachments'), $request->validated('client_upload_id'));
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'تم حفظ المرفق.']);
+        }
 
         return back()->with('status', 'تم رفع المرفقات إلى التخزين الخاص.');
     }

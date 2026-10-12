@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Student;
+use App\Notifications\SuspiciousStudentActivity;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -18,7 +19,7 @@ class AuditLogController extends Controller
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ], ['to.after_or_equal' => 'يجب أن يكون تاريخ النهاية بعد تاريخ البداية.']);
-        $request->user('web')->unreadNotifications()->update(['read_at' => now()]);
+        $request->user('web')->unreadNotifications()->where('type', SuspiciousStudentActivity::class)->update(['read_at' => now()]);
         $logs = AuditLog::query()->with(['student:id,name,email', 'device:id,device_name'])
             ->when($filters['event'] ?? null, fn ($query, string $event) => $query->where('event', $event))
             ->when($filters['student_id'] ?? null, fn ($query, int $studentId) => $query->where('student_id', $studentId))

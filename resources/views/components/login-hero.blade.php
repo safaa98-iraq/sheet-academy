@@ -1,8 +1,8 @@
 @props(['audience' => 'student'])
 <section class="welcome">
-    <a class="brand" href="{{ route('student.login') }}">
-        <span class="brand-mark"><x-icon name="tooth"/></span>
-        <span>عيادة التعلّم<small>معرفة تصنع الفرق</small></span>
+    <a class="brand" href="{{ route($audience === 'admin' ? 'admin.login' : 'student.login') }}">
+        <span class="brand-mark"><x-site-brand-mark/></span>
+        <span>{{ $siteBrand['name'] }}<small>{{ $siteBrand['tagline'] }}</small></span>
     </a>
     <div class="welcome-copy">
         <span class="welcome-label"><span class="status-dot"></span>{{ $audience === 'admin' ? 'مساحة الأستاذ وفريق الإدارة' : 'مساحتك لتتعلّم، وتتميّز' }}</span>

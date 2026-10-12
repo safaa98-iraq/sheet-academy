@@ -71,6 +71,9 @@ class CurriculumController extends Controller
         abort_if($course === null, 404);
         $this->authorize('update', $course);
         abort_if($node->type === 'material', 422);
+        if ($node->type === 'lesson' && $node->lesson !== null) {
+            return redirect()->route('admin.lessons.delete', $node->lesson);
+        }
         $data = $request->validated();
         DB::transaction(function () use ($node, $data): void {
             $scheduledAt = $data['publication_status'] === 'scheduled' ? ($data['scheduled_at'] ?? null) : null;
@@ -125,6 +128,9 @@ class CurriculumController extends Controller
         abort_if($course === null, 404);
         $this->authorize('delete', $course);
         abort_if($node->type === 'material', 422);
+        if ($node->type === 'lesson' && $node->lesson !== null) {
+            return redirect()->route('admin.lessons.delete', $node->lesson);
+        }
         $this->softDeleteBranch($node);
         $this->forgetCurriculumCache($course);
 
