@@ -11,13 +11,21 @@
         table { border-collapse: collapse; margin-top: 20px; width: 100%; }
         th, td { border: 1px solid #cbd2d9; padding: 9px; text-align: right; }
         th { background: #f1f4f6; }
-        @media print { .print-actions { display: none; } body { margin: 0; } }
+        .print-actions { background: #f1f4f6; padding: 16px; border-radius: 8px; }
+        .print-actions button { padding: 10px 16px; cursor: pointer; }
+        td { overflow-wrap: anywhere; }
+        @page { size: A4 landscape; margin: 12mm; }
+        @media print { .print-actions { display: none; } body { margin: 0; font-size: 11px; } thead { display: table-header-group; } tr { break-inside: avoid; } }
     </style>
 </head>
 <body>
-    <div class="print-actions"><button type="button" data-print>طباعة / حفظ PDF</button></div>
+    <div class="print-actions">
+        <p>١. راجع نتائج التقرير. ٢. اضغط طباعة / حفظ PDF. ٣. اختر الطابعة أو «حفظ بصيغة PDF» من نافذة المتصفح ثم أكد.</p>
+        <button type="button" data-print>طباعة / حفظ PDF</button>
+        <a href="{{ route('admin.student-progress', request()->query()) }}">العودة إلى تقدم الطلاب</a>
+    </div>
     <h1>تقرير تقدم الطلاب</h1>
-    <p>تاريخ التقرير: {{ now()->format('Y-m-d H:i') }}</p>
+    <p>تاريخ التقرير: {{ now()->timezone('Asia/Baghdad')->format('Y-m-d H:i') }} · بتوقيت بغداد</p>
     <table>
         <thead>
             <tr><th>الطالب</th><th>البريد</th><th>عدد المواد</th><th>الدروس المكتملة</th><th>نسبة الإكمال</th><th>وقت المشاهدة</th><th>آخر نشاط</th></tr>
@@ -38,5 +46,8 @@
             @endforelse
         </tbody>
     </table>
+    <script nonce="{{ $cspNonce ?? '' }}">
+        document.querySelector('[data-print]').addEventListener('click', () => window.print());
+    </script>
 </body>
 </html>

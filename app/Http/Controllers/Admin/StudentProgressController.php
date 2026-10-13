@@ -8,6 +8,7 @@ use App\Models\Course;
 use App\Models\LessonProgress;
 use App\Models\Student;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -51,7 +52,10 @@ class StudentProgressController extends Controller
 
     public function show(Student $student): View
     {
-        $progress = $student->progress()->with(['lesson.course'])->latest('updated_at')->paginate(50);
+        $progress = $student->progress()->with([
+            'lesson' => fn (BelongsTo $query) => $query->withTrashed(),
+            'lesson.course' => fn (BelongsTo $query) => $query->withTrashed(),
+        ])->latest('updated_at')->paginate(50);
         $lastLogin = AuditLog::query()->where('student_id', $student->id)->where('event', 'login_succeeded')->latest()->value('created_at');
         $totals = $student->progress()->selectRaw('COUNT(*) as lessons_started, SUM(watched_seconds) as watched_seconds, SUM(CASE WHEN completed_at IS NOT NULL THEN 1 ELSE 0 END) as lessons_completed')->first();
 
