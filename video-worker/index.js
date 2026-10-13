@@ -2,7 +2,7 @@ import {createServer} from 'node:http';
 import {timingSafeEqual} from 'node:crypto';
 import {Queue, Worker} from 'bullmq';
 import IORedis from 'ioredis';
-import {processVideo, reportStatus} from './processor.js';
+import {processVideo, reportStatus, SupersededVideoJobError} from './processor.js';
 import {promises as fs} from 'node:fs';
 import path from 'node:path';
 
@@ -12,6 +12,7 @@ const redis = new IORedis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {ma
 const queueName = 'video-processing';
 const queue = new Queue(queueName, {connection: redis});
 const privateRoot = path.resolve(process.env.PRIVATE_STORAGE_ROOT || '../storage/app/private');
+const activeVideos = new Map();
 
 function isAuthorized(request) {
     const provided = Buffer.from(request.headers.authorization?.replace(/^Bearer\s+/i, '') || '');
@@ -73,6 +74,8 @@ const server = createServer(async (request, response) => {
             jobId: job.job_id, attempts: 3, backoff: {type: 'exponential', delay: 5000},
             removeOnComplete: {age: 86400, count: 1000}, removeOnFail: {age: 604800, count: 1000},
         });
+        const active = activeVideos.get(job.video_id);
+        if (active && active.jobId !== job.job_id) active.controller.abort(new SupersededVideoJobError());
         response.writeHead(202, {'content-type': 'application/json'}).end(JSON.stringify({job_id: job.job_id, status: 'queued'}));
     } catch (error) {
         response.writeHead(400, {'content-type': 'application/json'}).end(JSON.stringify({message: error.message}));
@@ -81,7 +84,20 @@ const server = createServer(async (request, response) => {
 
 server.listen(port, '127.0.0.1', () => process.stdout.write(`video worker API listening on 127.0.0.1:${port}\n`));
 
-const worker = new Worker(queueName, async job => processVideo(job.data), {connection: redis, concurrency: Number(process.env.WORKER_CONCURRENCY || 1)});
+const worker = new Worker(queueName, async job => {
+    const controller = new AbortController();
+    const entry = {controller, jobId: job.data.job_id};
+    activeVideos.set(job.data.video_id, entry);
+    try {
+        await processVideo(job.data, {signal: controller.signal});
+        process.stdout.write(`video ${job.data.video_id}: ready for viewing\n`);
+    } catch (error) {
+        if (!(error instanceof SupersededVideoJobError)) throw error;
+        process.stdout.write(`video ${job.data.video_id}: skipped replaced processing request\n`);
+    } finally {
+        if (activeVideos.get(job.data.video_id) === entry) activeVideos.delete(job.data.video_id);
+    }
+}, {connection: redis, concurrency: Number(process.env.WORKER_CONCURRENCY || 1)});
 worker.on('active', job => process.stdout.write(`processing video ${job.data.video_id}\n`));
 worker.on('failed', async (job, error) => {
     if (job && job.attemptsMade >= (job.opts.attempts || 1)) {
