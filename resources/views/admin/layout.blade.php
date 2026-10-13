@@ -34,7 +34,7 @@
         @if(auth('web')->user()->is_super_admin)
             <nav class="instructor-nav" aria-label="إعدادات الحساب"><a href="{{ route('admin.profile.edit') }}" class="{{ request()->routeIs('admin.profile.*') ? 'active' : '' }}" @if(request()->routeIs('admin.profile.*')) aria-current="page" @endif><x-icon name="user"/><span>بيانات حسابي</span></a></nav>
         @endif
-        <div class="instructor-sidebar-bottom"><div class="instructor-tip"><x-icon name="book" /><b>التعلّم يبدأ بمحتوى رائع</b><p>رتّب دروسك، وتابع أثرها في رحلة طلابك.</p></div><a href="{{ route('student.login') }}"><x-icon name="arrow-left" /> دخول الطالب</a></div>
+        <div class="instructor-sidebar-bottom"><a href="{{ asset('guides/teacher-guide.pdf') }}" download><x-icon name="book" /> تحميل دليل الأستاذ</a><div class="instructor-tip"><x-icon name="book" /><b>التعلّم يبدأ بمحتوى رائع</b><p>رتّب دروسك، وتابع أثرها في رحلة طلابك.</p></div><a href="{{ route('student.login') }}"><x-icon name="arrow-left" /> دخول الطالب</a></div>
     </aside>
     <div class="instructor-workspace">
         <header class="instructor-topbar">
