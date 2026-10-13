@@ -1,6 +1,6 @@
 @extends('admin.layout')
 @section('content')
-<div class="admin-head">
+<div class="admin-head"><x-course-image :src="$course->cover_image" :title="$course->title"/>
     <div><span class="eyebrow">{{ $course->title }}</span><h1>منهج المادة</h1><p class="muted">رتّب الأجزاء والفصول والأقسام والدروس بالسحب والإفلات. تُحفظ التغييرات مباشرة.</p></div>
     <div class="admin-head-actions"><a class="btn" href="{{ route('admin.courses.preview', $course) }}">معاينة كطالب</a><a class="btn" href="{{ route('admin.courses.edit', $course) }}">إعدادات المادة</a></div>
 </div>

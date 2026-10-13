@@ -17,13 +17,15 @@ class NotificationController extends Controller
         $notifications = $request->user('student')->notifications()->latest()->paginate(20);
         $lessons = Lesson::whereIn('id', $notifications->map(fn ($notification) => $notification->data['lesson_id'] ?? null))->with('course')->get()->keyBy('id');
         $links = [];
+        $covers = [];
         foreach ($lessons as $lesson) {
             if (Gate::forUser($request->user('student'))->allows('viewByStudent', $lesson)) {
                 $links[$lesson->id] = route('student.lesson.show', $lesson);
+                $covers[$lesson->id] = $lesson->course->cover_image;
             }
         }
 
-        return view('student.notifications', compact('notifications', 'links'));
+        return view('student.notifications', compact('notifications', 'links', 'covers'));
     }
 
     public function update(Request $request, string $notification): RedirectResponse

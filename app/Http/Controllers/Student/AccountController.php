@@ -20,6 +20,7 @@ class AccountController extends Controller
         $lessons = $cards->flatMap(fn (array $course): array => $course['lessons']);
         $latestLesson = $lessons->filter(fn (array $lesson): bool => $lesson['position_seconds'] > 0 && $lesson['progress_updated_at'] !== null)
             ->sortByDesc('progress_updated_at')->first();
+        $resumeCourse = $latestLesson === null ? null : $cards->first(fn (array $course): bool => collect($course['lessons'])->contains('id', $latestLesson['id']));
         $device = $student->devices()->whereKey($request->session()->get('student_device_id'))->first();
         $token = $student->tokens()->whereKey($request->session()->get('student_token_id'))->first();
 
@@ -27,11 +28,11 @@ class AccountController extends Controller
             'student' => $student, 'currentDevice' => $device, 'currentToken' => $token,
             'deviceLabel' => $this->deviceLabel($device?->user_agent),
             'accountCourses' => $cards->map(fn (array $course): array => [
-                'title' => $course['title'], 'url' => $course['url'], 'percentage' => $course['percentage'],
+                'title' => $course['title'], 'cover_url' => $course['cover_url'], 'cover' => $course['cover'], 'url' => $course['url'], 'percentage' => $course['percentage'],
                 'completed' => collect($course['lessons'])->where('completed', true)->count(), 'total' => count($course['lessons']),
             ]),
             'accountTotals' => ['courses' => $cards->count(), 'completed' => $lessons->where('completed', true)->count(), 'minutes' => (int) floor($lessons->sum('watched_seconds') / 60)],
-            'resumeLesson' => $latestLesson === null ? null : ['title' => $latestLesson['title'], 'url' => $latestLesson['url'], 'position' => $latestLesson['position_seconds']],
+            'resumeLesson' => $latestLesson === null ? null : ['title' => $latestLesson['title'], 'cover_url' => $resumeCourse['cover_url'] ?? null, 'course_title' => $resumeCourse['title'] ?? '', 'url' => $latestLesson['url'], 'position' => $latestLesson['position_seconds']],
         ]);
     }
 

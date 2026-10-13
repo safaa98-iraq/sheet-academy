@@ -2,7 +2,7 @@
 
 @section('content')
 <main class="lesson-page curriculum-is-closed" data-lesson-page data-lesson-payload="{{ json_encode($lessonData) }}">
-    <div class="lesson-topbar"><a href="{{ $lessonData['course_url'] }}" class="lesson-back"><span aria-hidden="true">→</span> <span>العودة للمادة</span></a><span class="lesson-topbar-divider"></span><strong>{{ $lessonData['course_title'] }}</strong><div class="lesson-overall-progress"><span class="lesson-progress-ring" data-lesson-progress-ring><b data-lesson-percent>0%</b></span><span>تقدمك في المادة</span></div><button type="button" class="btn small curriculum-toggle" data-curriculum-toggle aria-expanded="true" aria-controls="lesson-curriculum">☷ <span>محتوى المادة</span></button></div>
+    <div class="lesson-topbar"><a href="{{ $lessonData['course_url'] }}" class="lesson-back"><span aria-hidden="true">→</span> <span>العودة للمادة</span></a><span class="lesson-topbar-divider"></span><x-course-image :src="$lessonData['course_cover_url'] ?? null" :title="$lessonData['course_title']" :variant="$lessonData['course_cover'] ?? 'anatomy'"/><strong>{{ $lessonData['course_title'] }}</strong><div class="lesson-overall-progress"><span class="lesson-progress-ring" data-lesson-progress-ring><b data-lesson-percent>0%</b></span><span>تقدمك في المادة</span></div><button type="button" class="btn small curriculum-toggle" data-curriculum-toggle aria-expanded="true" aria-controls="lesson-curriculum">☷ <span>محتوى المادة</span></button></div>
     <button type="button" class="curriculum-backdrop" data-curriculum-backdrop aria-label="إغلاق محتوى المادة" tabindex="-1"></button>
     <div class="lesson-workspace">
         <div class="lesson-main">

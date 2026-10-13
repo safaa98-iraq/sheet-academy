@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\LessonAttachment;
 use App\Models\Student;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -66,7 +68,7 @@ class StudentDocumentPageService
         abort_unless(in_array($attachment->mime_type, ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'], true), 404);
         abort_unless(Storage::disk($attachment->disk)->exists($attachment->path), 404);
         $expiresAt = now()->addMinutes(5);
-        $pageCount = $attachment->mime_type === 'application/pdf' ? $this->renderPdf($attachment) : 1;
+        $pageCount = $attachment->mime_type === 'application/pdf' ? $this->pdfPageCount($attachment) : 1;
 
         return collect(range(1, $pageCount))->map(fn (int $number): array => [
             'number' => $number,
@@ -83,6 +85,8 @@ class StudentDocumentPageService
             return $attachment->path;
         }
 
+        abort_if($page > $this->pdfPageCount($attachment), 404);
+        $this->renderPdfPage($attachment, $page);
         $directory = $this->renderDirectory($attachment);
         $path = $directory.'/page-'.str_pad((string) $page, 2, '0', STR_PAD_LEFT).'.png';
         abort_unless(Storage::disk('private')->exists($path), 404);
@@ -105,44 +109,61 @@ class StudentDocumentPageService
         })->values()->all();
     }
 
-    private function renderPdf(LessonAttachment $attachment): int
+    private function pdfPageCount(LessonAttachment $attachment): int
     {
-        $directory = $this->renderDirectory($attachment);
-        $disk = Storage::disk('private');
-        if ($disk->exists($directory.'/page-01.png')) {
-            return count($disk->files($directory));
-        }
-
-        $source = $disk->path($attachment->path);
-        $info = Process::timeout(20)->run([(string) config('documents.pdfinfo', 'pdfinfo'), $source]);
-        abort_unless($info->successful(), 422, 'تعذّر قراءة ملف PDF.');
-        preg_match('/^Pages:\s+(\d+)\s*$/m', $info->output(), $matches);
-        $pageCount = (int) ($matches[1] ?? 0);
-        abort_if($pageCount < 1 || $pageCount > (int) config('documents.max_pages', 60), 422, 'الملزمة فارغة أو تتجاوز الحد المسموح لعدد الصفحات.');
-
-        $directoryPath = $disk->path($directory);
-        if (! is_dir($directoryPath) && ! mkdir($directoryPath, 0700, true) && ! is_dir($directoryPath)) {
-            throw new RuntimeException('تعذّر تجهيز مساحة تحويل الملزمة.');
-        }
-        $prefix = $directoryPath.'/page';
-        $render = Process::timeout(120)->run([
-            (string) config('documents.pdftoppm', 'pdftoppm'), '-f', '1', '-l', (string) $pageCount,
-            '-scale-to', '1600', '-png', $source, $prefix,
-        ]);
-        if (! $render->successful()) {
-            $disk->deleteDirectory($directory);
-            abort(422, 'تعذّر تحويل صفحات الملزمة.');
-        }
-        foreach (glob($prefix.'-*.png') ?: [] as $file) {
-            $pageNumber = (int) substr($file, strrpos($file, '-') + 1, -4);
-            $target = $directoryPath.'/page-'.str_pad((string) $pageNumber, 2, '0', STR_PAD_LEFT).'.png';
-            if ($file !== $target) {
-                rename($file, $target);
+        $disk = Storage::disk($attachment->disk);
+        abort_unless($disk->exists($attachment->path), 404);
+        $pageCount = Cache::remember('document-page-count:'.$this->renderDirectory($attachment), now()->addHours(24), function () use ($attachment, $disk): int {
+            $info = Process::timeout(20)->run([(string) config('documents.pdfinfo', 'pdfinfo'), $disk->path($attachment->path)]);
+            if (! $info->successful()) {
+                Log::warning('document_metadata_failed', ['attachment_id' => $attachment->id, 'exit_code' => $info->exitCode()]);
+                abort(422, 'تعذّر قراءة ملف PDF. قد يكون تالفاً أو محمياً بكلمة مرور.');
             }
-        }
-        abort_unless(count($disk->files($directory)) === $pageCount, 422, 'لم تكتمل معالجة صفحات الملزمة.');
+            preg_match('/^Pages:\s+(\d+)\s*$/m', $info->output(), $matches);
+
+            return (int) ($matches[1] ?? 0);
+        });
+        abort_if($pageCount < 1 || $pageCount > (int) config('documents.max_pages', 500), 422, 'الملزمة فارغة أو تتجاوز الحد المسموح لعدد الصفحات.');
 
         return $pageCount;
+    }
+
+    private function renderPdfPage(LessonAttachment $attachment, int $page): void
+    {
+        $disk = Storage::disk('private');
+        $directory = $this->renderDirectory($attachment);
+        $target = $directory.'/page-'.str_pad((string) $page, 2, '0', STR_PAD_LEFT).'.png';
+        if ($disk->exists($target)) {
+            return;
+        }
+        Cache::lock('document-page-render:'.$directory.':'.$page, 90)->block(10, function () use ($attachment, $page, $disk, $directory, $target): void {
+            if ($disk->exists($target)) {
+                return;
+            }
+            $directoryPath = $disk->path($directory);
+            if (! is_dir($directoryPath) && ! mkdir($directoryPath, 0700, true) && ! is_dir($directoryPath)) {
+                throw new RuntimeException('تعذّر تجهيز مساحة تحويل الملزمة.');
+            }
+            $prefix = $directoryPath.'/.render-'.$page.'-'.bin2hex(random_bytes(8));
+            $temporary = $prefix.'.png';
+            try {
+                $render = Process::timeout(60)->run([
+                    (string) config('documents.pdftoppm', 'pdftoppm'), '-f', (string) $page, '-l', (string) $page,
+                    '-singlefile', '-scale-to', '1600', '-png', Storage::disk($attachment->disk)->path($attachment->path), $prefix,
+                ]);
+                if (! $render->successful() || ! is_file($temporary) || @getimagesize($temporary) === false) {
+                    Log::warning('document_render_failed', ['attachment_id' => $attachment->id, 'page' => $page, 'exit_code' => $render->exitCode()]);
+                    abort(422, 'تعذّر تجهيز هذه الصفحة. حاول فتحها مجدداً.');
+                }
+                if (! rename($temporary, $disk->path($target))) {
+                    throw new RuntimeException('تعذّر حفظ صفحة الملزمة.');
+                }
+            } finally {
+                if (is_file($temporary)) {
+                    unlink($temporary);
+                }
+            }
+        });
     }
 
     private function renderDirectory(LessonAttachment $attachment): string

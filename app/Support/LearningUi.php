@@ -197,6 +197,6 @@ class LearningUi
         $index = array_search($lessonId, array_column($lessons, 'id'), true);
         abort_if($index === false, 404);
 
-        return array_merge(['description' => null, 'body_html' => '', 'attachments' => []], $lessons[$index], ['course_id' => $course['id'], 'course_title' => $course['title'], 'course_url' => $course['url'], 'viewer_url' => $preview ? route('admin.courses.preview', ['course' => $course['id'], 'lesson' => $lessonId]) : route('student.viewer'), 'previous_url' => $lessons[$index - 1]['url'] ?? null, 'next_url' => $lessons[$index + 1]['url'] ?? null]);
+        return array_merge(['description' => null, 'body_html' => '', 'attachments' => []], $lessons[$index], ['course_id' => $course['id'], 'course_title' => $course['title'], 'course_cover_url' => $course['cover_url'], 'course_cover' => $course['cover'], 'course_url' => $course['url'], 'viewer_url' => $preview ? route('admin.courses.preview', ['course' => $course['id'], 'lesson' => $lessonId]) : route('student.viewer'), 'previous_url' => $lessons[$index - 1]['url'] ?? null, 'next_url' => $lessons[$index + 1]['url'] ?? null]);
     }
 }

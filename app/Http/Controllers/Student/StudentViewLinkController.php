@@ -8,12 +8,23 @@ use App\Models\LessonAttachment;
 use App\Models\StudentDevice;
 use App\Services\StudentAuditService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Gate;
 
 class StudentViewLinkController extends Controller
 {
+    public function open(Request $request): RedirectResponse
+    {
+        $lesson = $request->route('lesson');
+        $attachment = $request->route('attachment');
+        abort_unless($lesson instanceof Lesson || $attachment instanceof LessonAttachment, 404);
+        $request->merge(['target_type' => $lesson instanceof Lesson ? 'lesson' : 'document', 'target_id' => ($lesson ?? $attachment)->id]);
+
+        return redirect()->to($this->issue($request)->getData(true)['url']);
+    }
+
     public function issue(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -45,12 +56,14 @@ class StudentViewLinkController extends Controller
         $viewLink = (string) $request->input('view');
         $device = StudentDevice::query()->whereKey($request->session()->get('student_device_id'))
             ->where('student_id', $request->user('student')->id)->whereNull('revoked_at')->first();
-        if ($device !== null && $viewLink !== '' && $device->view_link_hash !== null
-            && hash_equals($device->view_link_hash, hash('sha256', $viewLink))) {
-            $device->forceFill(['view_link_hash' => null])->save();
-            app(StudentAuditService::class)->record($request->user('student'), 'view_exited', $request, [], $device);
-            if (hash_equals((string) $request->session()->get('active_view_link'), $viewLink)) {
-                $request->session()->forget('active_view_link');
+        if ($device !== null && $viewLink !== '') {
+            $closed = StudentDevice::query()->whereKey($device->id)->where('view_link_hash', hash('sha256', $viewLink))
+                ->update(['view_link_hash' => null]);
+            if ($closed === 1) {
+                app(StudentAuditService::class)->record($request->user('student'), 'view_exited', $request, [], $device);
+                if (hash_equals((string) $request->session()->get('active_view_link'), $viewLink)) {
+                    $request->session()->forget('active_view_link');
+                }
             }
         }
 

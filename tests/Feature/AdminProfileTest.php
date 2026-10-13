@@ -14,6 +14,15 @@ class AdminProfileTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_admin_accounts_list_renders_super_admin_profile_and_other_account_actions(): void
+    {
+        $teacher = User::factory()->create(['is_super_admin' => true]);
+        $other = User::factory()->create();
+
+        $this->actingAs($teacher, 'web')->get(route('admin.admins.index'))->assertOk()->assertSee('تعديل بياناتي')
+            ->assertSee($other->email)->assertSee(route('admin.admins.edit', $other))->assertDontSee('@unless');
+    }
+
     public function test_super_admin_updates_own_details_and_logs_in_with_new_credentials(): void
     {
         $admin = User::factory()->create(['is_super_admin' => true]);

@@ -29,7 +29,8 @@ class DocumentViewerController extends Controller
             'lessonData' => [
                 'id' => (string) $attachment->lesson_id, 'url' => route('student.lesson.show', $attachment->lesson),
                 'course_title' => $attachment->lesson->course?->title ?? 'المادة التعليمية',
-                'watermark' => app(StudentAuditService::class)->watermarkText($student),
+                'course_cover_url' => $attachment->lesson->course?->cover_image,
+                'watermark' => app(StudentAuditService::class)->watermarkIdentifier($student),
             ],
         ]);
     }

@@ -75,6 +75,8 @@ export function initViewers() {
                 viewer.querySelectorAll('[data-document-image], .document-thumbnail-sheet img').forEach(image => image.removeAttribute('src'));
                 canvas.hidden = true;
                 announcement.textContent = 'أُوقف العرض لحماية المحتوى. افتح الملزمة مجدداً.';
+                const status = viewer.querySelector('[data-viewer-status]');
+                if (status) { status.hidden = false; status.textContent = announcement.textContent; }
             };
             pages.forEach(page => guardWatermark({container: page, selector: '[data-document-watermark]', text: watermarkText,
                 isVisible: () => !page.hidden && page.querySelector('[data-document-image]')?.naturalWidth > 0,

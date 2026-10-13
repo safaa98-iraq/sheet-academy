@@ -107,6 +107,26 @@ class LearningExperienceTest extends TestCase
             ->assertDontSee($course->title, false)->assertDontSee($course->description, false);
     }
 
+    public function test_current_course_cover_is_shared_across_student_pages_and_replaced_without_stale_images(): void
+    {
+        $student = Student::factory()->create();
+        $course = Course::factory()->create(['cover_image' => '/branding/cover-current.webp']);
+        $student->courses()->attach($course);
+        $lesson = Lesson::factory()->for($course)->create(['type' => 'text', 'is_published' => true, 'publication_status' => 'published']);
+        $issued = app(StudentTokenService::class)->issue($student);
+        $this->loginStudent($issued['token']);
+
+        foreach (['/learning', '/progress', route('student.account'), route('student.course.show', $course), $this->issueStudentViewLink('lesson', $lesson->id)] as $url) {
+            $this->get($url)->assertSee('src="/branding/cover-current.webp"', false);
+        }
+
+        $course->update(['cover_image' => '/branding/cover-replaced.webp']);
+        $this->get(route('student.course.show', $course))->assertSee('src="/branding/cover-replaced.webp"', false)
+            ->assertDontSee('/branding/cover-current.webp');
+        $course->update(['cover_image' => null]);
+        $this->get(route('student.course.show', $course))->assertSee('course-art', false)->assertDontSee('src=""', false);
+    }
+
     public function test_offline_fallback_is_public_and_does_not_contain_student_content(): void
     {
         $this->get('/offline')->assertOk()->assertHeader('content-type', 'text/html; charset=utf-8');

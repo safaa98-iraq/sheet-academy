@@ -3,7 +3,7 @@
 @php($label = ['grade' => 'الصف بالكامل', 'course' => 'المادة', 'lesson' => 'الدرس'][$preview['kind']])
 <div class="admin-head"><div><h1>راجع العواقب قبل الحذف</h1><p class="muted">{{ $preview['name'] }}</p></div><a class="btn" href="{{ $cancelUrl }}">إلغاء والعودة</a></div>
 <dialog open class="content-delete-dialog" data-content-delete-dialog data-cancel-url="{{ $cancelUrl }}" aria-labelledby="delete-heading" aria-describedby="delete-consequences">
-<div class="account-card-heading"><x-icon name="trash"/><h2 id="delete-heading" tabindex="-1" autofocus>حذف {{ $label }}؟</h2></div><p class="delete-content-name">{{ $preview['name'] }}</p>
+<div class="account-card-heading"><x-icon name="trash"/><h2 id="delete-heading" tabindex="-1" autofocus>حذف {{ $label }}؟</h2></div>@if($coverCourse)<x-course-image :src="$coverCourse->cover_image" :title="$coverCourse->title"/>@endif<p class="delete-content-name">{{ $preview['name'] }}</p>
 <div id="delete-consequences"><p>راجع ما سيحدث قبل التأكيد:</p><ul>
 @if($preview['kind'] === 'grade')<li>سيختفي الصف من قائمة الصفوف، وتُحذف مواده ودروسه من العرض.</li>@elseif($preview['kind'] === 'course')<li>ستختفي المادة وجميع دروسها من حسابات الطلاب ولوحة المحتوى.</li>@else<li>سيختفي الدرس، ولن يستطيع الطلاب فتح الفيديو أو المرفقات المرتبطة به.</li>@endif
 <li>المحتوى المتأثر: {{ $preview['courses'] }} مادة، {{ $preview['lessons'] }} درس، {{ $preview['attachments'] }} مرفق. الطلاب المسجلون في محتواه: {{ $preview['students'] }}.</li>

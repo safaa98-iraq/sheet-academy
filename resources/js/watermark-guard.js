@@ -42,11 +42,16 @@ export function guardWatermark({container, selector, text, onTamper, isVisible =
             }
             if (opacity < 0.12 || bounds.width < 30 || bounds.height < 8
                 || bounds.right < frame.left || bounds.left > frame.right || bounds.bottom < frame.top || bounds.top > frame.bottom) invalid = true;
-            // Inspect the visible centre; a covering sibling or external layer must not hide the mark.
-            const x = Math.max(0, Math.min(innerWidth - 1, bounds.left + bounds.width / 2));
-            const y = Math.max(0, Math.min(innerHeight - 1, bounds.top + bounds.height / 2));
-            if (bounds.top < innerHeight && bounds.bottom > 0 && bounds.left < innerWidth && bounds.right > 0) {
-                const hit = document.elementFromPoint(x, y);
+            // Test only the part visible through scroll containers. The rest is normal clipping.
+            const visible = {left: Math.max(0, bounds.left), right: Math.min(innerWidth, bounds.right), top: Math.max(0, bounds.top), bottom: Math.min(innerHeight, bounds.bottom)};
+            for (let ancestor = mark.parentElement; ancestor instanceof Element; ancestor = ancestor.parentElement) {
+                const style = getComputedStyle(ancestor);
+                const clip = ancestor.getBoundingClientRect();
+                if (style.overflowX !== 'visible') { visible.left = Math.max(visible.left, clip.left); visible.right = Math.min(visible.right, clip.right); }
+                if (style.overflowY !== 'visible') { visible.top = Math.max(visible.top, clip.top); visible.bottom = Math.min(visible.bottom, clip.bottom); }
+            }
+            if (visible.left < visible.right && visible.top < visible.bottom) {
+                const hit = document.elementFromPoint((visible.left + visible.right) / 2, (visible.top + visible.bottom) / 2);
                 if (hit && !mark.contains(hit) && hit !== container && !hit.matches('video, [data-document-image]') && !textSurfaces.includes(hit)) invalid = true;
             }
         }
