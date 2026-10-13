@@ -28,7 +28,7 @@ class ContentDeletionConfirmationTest extends TestCase
         $student = Student::factory()->create();
         $student->courses()->attach($course);
         $this->actingAs(User::factory()->create(['is_super_admin' => true]), 'web');
-        $this->get(route('admin.grade-levels.delete', $grade))->assertOk()->assertSee($grade->name)->assertDontSee($grade->name, false)->assertSee('قرأت العواقب')->assertSee('لا يوجد زر استرجاع')->assertViewHas('preview', fn ($p) => $p['courses'] === 1 && $p['lessons'] === 1 && $p['attachments'] === 1 && $p['students'] === 1);
+        $this->get(route('admin.grade-levels.delete', $grade))->assertOk()->assertSee($grade->name)->assertDontSee($grade->name, false)->assertSee('قرأت العواقب')->assertSee('يمكن استرجاع العنصر')->assertViewHas('preview', fn ($p) => $p['courses'] === 1 && $p['lessons'] === 1 && $p['attachments'] === 1 && $p['students'] === 1);
         $this->assertModelExists($grade);
         $this->assertModelExists($course);
         $this->assertModelExists($lesson);

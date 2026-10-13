@@ -50,7 +50,7 @@
         @if($node->type === 'lesson' && $node->lesson)
         <a class="btn small" href="{{ route('admin.lessons.delete', $node->lesson) }}"><x-icon name="trash"/>حذف الدرس</a>
         @else
-        <form method="post" action="{{ route('admin.curriculum-nodes.destroy', $node) }}" data-confirm="سيختفي هذا القسم وجميع الدروس والفيديوهات والمرفقات تحته عن الطلاب. ستبقى حساباتهم وتقدّمهم محفوظين، ولا يوجد زر استرجاع حالياً. هل تؤكد الحذف؟">
+        <form method="post" action="{{ route('admin.curriculum-nodes.destroy', $node) }}" data-confirm="سيختفي هذا القسم وجميع الدروس والفيديوهات والمرفقات تحته عن الطلاب. ستبقى حساباتهم وتقدّمهم محفوظين، ويمكن استرجاع المحاضرات من الأرشيف. هل تؤكد الحذف؟">
             @csrf @method('DELETE')<button class="btn small">حذف</button>
         </form>
         @endif

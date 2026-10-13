@@ -12,7 +12,7 @@
         'watch_started' => 'بدء مشاهدة', 'watch_heartbeat' => 'متابعة مشاهدة', 'view_exited' => 'مغادرة المشاهدة',
         'document_opened' => 'فتح ملزمة', 'suspicious_devtools' => 'أدوات مطور', 'suspicious_copy' => 'محاولة نسخ',
         'suspicious_print' => 'محاولة طباعة', 'suspicious_watermark' => 'عبث بالبصمة', 'stale_view_link' => 'رابط قديم',
-        'content_deleted_by_admin' => 'حذف محتوى من الأستاذ',
+        'content_restored_by_admin' => 'استرجاع محتوى من الأرشيف', 'content_deleted_by_admin' => 'حذف محتوى من الأستاذ',
         'automatic_suspension' => 'إيقاف تلقائي',
         'suspicious_activity_flood' => 'تجاوز حد طلبات النشاط',
     ];

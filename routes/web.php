@@ -201,6 +201,7 @@ Route::middleware(['auth:web', 'admin.active'])->prefix('admin')->name('admin.')
     });
 
     Route::get('/archive', [ArchivedContentController::class, 'index'])->middleware('permission:courses.manage')->name('archive.index');
+    Route::post('/archive/{type}/{id}/restore', [ArchivedContentController::class, 'restore'])->whereIn('type', ['grade', 'course', 'lesson'])->whereNumber('id')->middleware(['permission:courses.manage', 'throttle:10,1,content-restore'])->name('archive.restore');
     Route::get('/settings', [SiteSettingController::class, 'edit'])->middleware('permission:settings.manage')->name('settings.edit');
     Route::put('/settings', [SiteSettingController::class, 'update'])->middleware('permission:settings.manage')->name('settings.update');
 
