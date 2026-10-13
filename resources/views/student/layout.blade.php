@@ -17,9 +17,9 @@ if (!$preview) { $nav['account'] = ['حسابي', 'user']; }
 </header>
 <nav class="mobile-nav" aria-label="التنقل على الهاتف">@foreach($nav as $key=>$item)<a @class(['active'=>$page===$key]) @if($page===$key) aria-current="page" @endif href="{{ $preview?route('student.'.$key):route('student.'.$key) }}"><x-icon :name="$item[1]"/>{{ $item[0] }}</a>@endforeach</nav>
 @unless($preview)<div class="notification-arrival student-notification-arrival" data-notification-arrival role="status" aria-live="polite" hidden><x-icon name="bell"/><span data-notification-message></span><a class="text-link" href="{{ route('student.notifications') }}">عرض التنبيه</a></div>@endunless
-<div class="student-guidance-wrap"><x-usage-guide audience="student" :page="$page" :preview="$preview" /></div>
+<div class="student-guidance-wrap">@if($page === 'learning')<x-guide-download audience="student" />@endif<x-usage-guide audience="student" :page="$page" :preview="$preview" /></div>
 <div id="main-content"><x-page-state :state="$preview?request('state','ready'):'ready'">@yield('content')</x-page-state></div>
-<footer class="footer"><a class="brand" href="{{ $preview?route('student.learning'):route('student.learning') }}"><x-site-brand-mark/>{{ $siteBrand['name'] }}</a><a href="{{ asset('guides/student-guide.pdf') }}" download>تحميل دليل الطالب</a><small>© {{ date('Y') }} جميع الحقوق محفوظة</small></footer>
+<footer class="footer"><a class="brand" href="{{ $preview?route('student.learning'):route('student.learning') }}"><x-site-brand-mark/>{{ $siteBrand['name'] }}</a><a href="{{ asset('guides/student-guide.pdf') }}?v=20261013-replacement" download>تحميل دليل الطالب</a><small>© {{ date('Y') }} جميع الحقوق محفوظة</small></footer>
 <x-toast/>
 <script type="application/json" nonce="{{ $cspNonce ?? '' }}" id="learning-data">@json($courseCards ?? (isset($selectedCourse) && $selectedCourse ? [$selectedCourse]:[]))</script>
 <script type="application/json" nonce="{{ $cspNonce ?? '' }}" id="initial-progress">@json($progressSnapshot ?? [])</script>

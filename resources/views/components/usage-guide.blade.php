@@ -54,6 +54,6 @@ $reading = request()->routeIs('student.lesson*', 'student.documents.*', 'student
 <details class="usage-guide" data-usage-guide @if(!$reading) open @endif>
     <summary><x-icon name="bulb"/><span><strong>إرشادات هذه الصفحة</strong><small>{{ $guide[0] }}</small></span><span class="usage-guide-toggle" aria-hidden="true">⌄</span></summary>
     <ol class="usage-guide-steps">@foreach($guide[1] as $instruction)<li><span class="usage-guide-number" aria-hidden="true">{{ $loop->iteration }}</span><p>{{ $instruction }}</p></li>@endforeach</ol>
-    @unless(request()->is('login', 'student/login', 'admin/login', 'professor/login'))<div class="usage-guide-footer"><span>يمكنك طي الإرشادات من العنوان والعودة إليها في أي وقت.</span><a href="{{ asset('guides/'.($audience === 'teacher' ? 'teacher' : 'student').'-guide.pdf') }}" download>تحميل الدليل المصوّر <x-icon name="arrow-left"/></a></div>@endunless
+    @unless(request()->is('login', 'student/login', 'admin/login', 'professor/login'))<div class="usage-guide-footer"><span>يمكنك طي الإرشادات من العنوان والعودة إليها في أي وقت.</span><a href="{{ asset('guides/'.($audience === 'teacher' ? 'teacher' : 'student').'-guide.pdf') }}?v=20261013-replacement" download>تحميل الدليل المصوّر <x-icon name="arrow-left"/></a></div>@endunless
 </details>
 @endif
