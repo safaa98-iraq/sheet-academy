@@ -1,0 +1,22 @@
+.usage-guide{margin-block:0 24px;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;text-align:start}
+.usage-guide>summary{display:flex;align-items:center;gap:12px;padding:14px 18px;list-style:none;background:var(--accent-soft)}
+.usage-guide>summary::-webkit-details-marker{display:none}
+.usage-guide>summary>.icon{width:22px;height:22px;color:var(--accent-dark)}
+.usage-guide>summary>span:nth-child(2){min-width:0;flex:1}
+.usage-guide strong{display:block;font-size:14px;color:var(--text)}
+.usage-guide summary small{display:block;font-size:12px;color:var(--muted);line-height:1.7}
+.usage-guide-toggle{font-size:20px;transition:transform .15s}
+.usage-guide[open] .usage-guide-toggle{transform:rotate(180deg)}
+.usage-guide-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 20px;list-style:none;margin:0;padding:18px}
+.usage-guide-steps li{display:flex;align-items:flex-start;gap:9px;min-width:0}
+.usage-guide-number{display:grid;place-items:center;width:24px;height:24px;flex:0 0 24px;border-radius:50%;background:var(--accent-soft);color:var(--accent-dark);font-size:12px;font-weight:700}
+.usage-guide-steps p{font-size:12px;line-height:1.85;color:var(--text)}
+.usage-guide-footer{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 18px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+.usage-guide-footer a{display:inline-flex;align-items:center;gap:6px;color:var(--accent-dark);font-weight:700;flex-shrink:0}
+.usage-guide-footer .icon{width:14px;height:14px}
+.student-guidance-wrap{max-width:1240px;margin:auto;padding:24px 30px 0}
+.student-guidance-wrap .usage-guide{margin-bottom:0}
+.login .usage-guide{margin:16px 0}.login .usage-guide-steps{grid-template-columns:1fr;gap:9px;padding:13px}.login .usage-guide>summary{padding:11px 13px}
+@media(max-width:900px){.usage-guide-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.usage-guide-steps{grid-template-columns:1fr;gap:12px;padding:14px}.usage-guide>summary{padding:12px 14px}.usage-guide-footer{align-items:flex-start;flex-direction:column;padding:10px 14px}.student-guidance-wrap{padding:18px 16px 0}}
+@media(prefers-reduced-motion:reduce){.usage-guide-toggle{transition:none}}

@@ -182,6 +182,20 @@ class StudentController extends Controller
             : response()->json(['message' => 'الرمز القديم محفوظ كتجزئة فقط. استبدله من صفحة التجديد مرة واحدة ليصبح قابلاً للنسخ.'], 422)->header('Cache-Control', 'private, no-store');
     }
 
+    public function allowDeviceChange(Student $student, Request $request, StudentAuditService $audit): RedirectResponse
+    {
+        $this->authorize('update', $student);
+        $request->validate(['confirmed' => ['required', 'accepted']], ['confirmed.accepted' => 'أكد السماح بتغيير جهاز الطالب.']);
+        DB::transaction(function () use ($student, $request, $audit): void {
+            $student = Student::whereKey($student->id)->lockForUpdate()->firstOrFail();
+            $student->devices()->whereNull('revoked_at')->update(['revoked_at' => now(), 'view_link_hash' => null]);
+            $student->forceFill(['bound_device_hash' => null, 'bound_device_user_agent' => null, 'bound_device_at' => null])->save();
+            $audit->record($student, 'device_change_allowed', $request, ['actor_id' => $request->user('web')->id]);
+        }, attempts: 3);
+
+        return redirect()->route('admin.students.show', $student)->with('status', 'تم السماح بتغيير الجهاز وإنهاء الجلسات السابقة. أول دخول ناجح تالٍ يعتمد الجهاز والمتصفح الجديدين؛ رمز الطالب وتقدّمه محفوظان.');
+    }
+
     public function regenerate(Student $student, StudentTokenService $tokens, Request $request): RedirectResponse
     {
         $this->authorize('update', $student);

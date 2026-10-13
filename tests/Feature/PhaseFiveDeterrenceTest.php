@@ -23,7 +23,7 @@ class PhaseFiveDeterrenceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_second_login_revokes_the_previous_device_session(): void
+    public function test_repeated_login_from_same_browser_replaces_the_previous_session(): void
     {
         $student = Student::factory()->create();
         $token = app(StudentTokenService::class)->issue($student);
@@ -34,7 +34,7 @@ class PhaseFiveDeterrenceTest extends TestCase
         $this->loginStudent($token['token']);
 
         $this->assertNotNull($firstDevice->fresh()->revoked_at);
-        $this->assertDatabaseHas('audit_logs', ['student_id' => $student->id, 'event' => 'multiple_device_login']);
+        $this->assertDatabaseHas('audit_logs', ['student_id' => $student->id, 'event' => 'session_replaced']);
         $this->assertSame(1, StudentDevice::query()->where('student_id', $student->id)->whereNull('revoked_at')->count());
     }
 

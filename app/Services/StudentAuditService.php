@@ -18,6 +18,7 @@ class StudentAuditService
         'login_failed' => 1, 'login_succeeded' => 0, 'logout' => 0, 'view_exited' => 0, 'watch_started' => 0, 'watch_heartbeat' => 0,
         'document_opened' => 0, 'lesson_opened' => 0, 'suspicious_devtools' => 3, 'suspicious_copy' => 2,
         'suspicious_print' => 2, 'suspicious_watermark' => 5, 'multiple_device_login' => 5,
+        'device_login_blocked' => 0, 'device_bound' => 0, 'device_change_allowed' => 0, 'session_replaced' => 0,
         'stale_view_link' => 1, 'automatic_suspension' => 0,
         'suspicious_activity_flood' => 5,
     ];
@@ -102,6 +103,7 @@ class StudentAuditService
             'suspicious_copy' => 'تم رصد محاولة نسخ أو قص محتوى محمي.',
             'suspicious_print' => 'تم رصد محاولة طباعة محتوى محمي.',
             'suspicious_watermark' => 'عبثت الصفحة بطبقة البصمة المرئية.',
+            'device_login_blocked' => 'رُفض دخول من جهاز غير معتمد؛ يحتاج إذن الأستاذ.',
             'multiple_device_login' => 'أنهى تسجيل دخول جديد جلسة جهاز آخر.',
             'stale_view_link' => 'محاولة فتح رابط مشاهدة قديم أو منتهي.',
             'suspicious_activity_flood' => 'تجاوز حد طلبات النشاط؛ أُبطل رابط العرض لحماية المحتوى.',

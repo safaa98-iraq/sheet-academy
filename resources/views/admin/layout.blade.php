@@ -52,7 +52,7 @@
             <div class="notification-arrival" data-notification-arrival role="status" aria-live="polite" hidden><x-icon name="bell"/><span data-notification-message></span><a class="text-link" href="{{ route('admin.notifications.index') }}">عرض التنبيهات</a></div>
             @if(session('status'))<div class="status-msg" role="status">{{ session('status') }}</div>@endif
             @if($errors->any())<div class="errors" role="alert"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-            @if(!request()->routeIs('admin.lessons.edit','admin.courses.lessons.create','admin.students.create','admin.students.edit','admin.profile.*','admin.notifications.*'))<x-step-tip>{{ match(true) { request()->routeIs('admin.grade-levels.*') => 'ابدأ باسم المرحلة الدراسية؛ ستظهر عند إضافة المواد وحسابات الطلاب.', request()->routeIs('admin.courses.*') => 'اختر المرحلة، اكتب اسم المادة، ثم انشرها أو احفظها كمسودة. أضف المحاضرات من صفحة المحاضرات.', request()->routeIs('admin.students.*') => 'افتح ملف الطالب لإدارة اشتراكه ومواده ورمز دخوله، مع الاحتفاظ بتقدّمه.', request()->routeIs('admin.student-progress*') => 'اختر الطالب أو المادة لتعرف آخر محاضرة ونقطة توقفه.', request()->routeIs('admin.admins.*','admin.roles.*') => 'امنح كل عضو صلاحيات المهام التي يحتاجها فقط.', default => 'اختر القسم من القائمة؛ التغييرات التي تحفظها تظهر مباشرة في المنصة.' } }}</x-step-tip>@endif
+            <x-usage-guide audience="teacher" />
             @yield('content')
         </main>
         <footer class="instructor-footer"><span>{{ $siteBrand['name'] }} · {{ $siteBrand['tagline'] }}</span><span>{{ $isPreview ? 'بيانات تجريبية · تحفظ تغييرات المعاينة على جهازك' : 'مساحة إدارة المحتوى والطلاب' }}</span></footer>

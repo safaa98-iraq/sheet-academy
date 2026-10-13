@@ -12,6 +12,7 @@
             <span class="eyebrow">مساحة الأستاذ وفريق الإدارة</span>
             <h2 id="login-title">تسجيل دخول البروفسور</h2>
             <p class="muted">سجّل الدخول لإدارة المحتوى ومتابعة طلابك.</p>
+            <x-usage-guide audience="student" />
             @if($errors->any())<p class="error-message" role="alert">بيانات الدخول غير صحيحة.</p>@endif
             <label for="email">البريد الإلكتروني</label>
             <input id="email" name="email" type="email" dir="ltr" value="{{ old('email') }}" autocomplete="username" placeholder="name@example.com" required>

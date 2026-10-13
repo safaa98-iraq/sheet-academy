@@ -21,9 +21,11 @@ class Student extends Authenticatable
 
     protected $fillable = ['name', 'email', 'status', 'created_by', 'grade_level_id', 'college', 'phone', 'study_grade_level_id', 'subscription_expires_at'];
 
+    protected $hidden = ['bound_device_hash'];
+
     protected function casts(): array
     {
-        return ['subscription_expires_at' => 'datetime', 'subscription_expiry_notified_at' => 'datetime', 'subscription_reminded_at' => 'datetime', 'subscription_reminder_for' => 'datetime'];
+        return ['bound_device_at' => 'datetime', 'subscription_expires_at' => 'datetime', 'subscription_expiry_notified_at' => 'datetime', 'subscription_reminded_at' => 'datetime', 'subscription_reminder_for' => 'datetime'];
     }
 
     public function subscriptionIsActive(): bool

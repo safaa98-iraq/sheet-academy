@@ -159,10 +159,10 @@ const record = (name, result) => {results.push({name, result}); console.log(name
     await page.goto(base+'/course/'+fixture.course_slug);await page.goto(base+'/progress');await page.goto(base+'/learning');
     await issue();await play();
     const secondDevice=await playwright.request.newContext();await loginRequest(secondDevice,'assigned');
-    await page.waitForFunction(()=>document.querySelector('[data-hls-video]').paused,null,{timeout:16000});
-    record('revoked device stops buffered playback at the next progress heartbeat','PASS within 16 seconds');
-    await page.goto(base+'/learning');assert(new URL(page.url()).pathname==='/login');record('second device login ends first session','BLOCKED first session');
-    const secondHtml=await(await secondDevice.get(base+'/learning')).text();assert(secondHtml.includes('data-resume'));record('server resume is available to the new device','PASS');
+    assert.equal((await secondDevice.get(base+'/learning',{maxRedirects:0})).status(),302);
+    const refused=await(await secondDevice.get(base+'/login')).text();assert(refused.includes('اطلب من الأستاذ السماح بتغيير الجهاز'));
+    await page.goto(base+'/learning');assert(new URL(page.url()).pathname==='/learning');
+    record('unapproved device cannot log in or revoke the approved device session','BLOCKED second device; approved device stays active');
     assert.deepEqual(sourceLinks,[]);record('HTML and JSON responses contain no original video/PDF URLs','0 source links');
     assert.deepEqual(errors,[]);record('browser JavaScript errors','0');
     fs.writeFileSync('/tmp/academy-security-browser-results.json',JSON.stringify({results,errors},null,2));
