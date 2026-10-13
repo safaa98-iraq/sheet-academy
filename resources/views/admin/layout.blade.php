@@ -34,7 +34,7 @@
         @if(auth('web')->user()->is_super_admin)
             <nav class="instructor-nav" aria-label="إعدادات الحساب"><a href="{{ route('admin.profile.edit') }}" class="{{ request()->routeIs('admin.profile.*') ? 'active' : '' }}" @if(request()->routeIs('admin.profile.*')) aria-current="page" @endif><x-icon name="user"/><span>بيانات حسابي</span></a></nav>
         @endif
-        <div class="instructor-sidebar-bottom"><a href="{{ asset('guides/teacher-guide.pdf') }}" download><x-icon name="book" /> تحميل دليل الأستاذ</a><div class="instructor-tip"><x-icon name="book" /><b>التعلّم يبدأ بمحتوى رائع</b><p>رتّب دروسك، وتابع أثرها في رحلة طلابك.</p></div><a href="{{ route('student.login') }}"><x-icon name="arrow-left" /> دخول الطالب</a></div>
+        <div class="instructor-sidebar-bottom"><a href="{{ asset('guides/teacher-guide.pdf') }}?v=20261013-replacement" download><x-icon name="book" /> تحميل دليل الأستاذ</a><div class="instructor-tip"><x-icon name="book" /><b>التعلّم يبدأ بمحتوى رائع</b><p>رتّب دروسك، وتابع أثرها في رحلة طلابك.</p></div><a href="{{ route('student.login') }}"><x-icon name="arrow-left" /> دخول الطالب</a></div>
     </aside>
     <div class="instructor-workspace">
         <header class="instructor-topbar">
@@ -52,7 +52,8 @@
             <div class="notification-arrival" data-notification-arrival role="status" aria-live="polite" hidden><x-icon name="bell"/><span data-notification-message></span><a class="text-link" href="{{ route('admin.notifications.index') }}">عرض التنبيهات</a></div>
             @if(session('status'))<div class="status-msg" role="status">{{ session('status') }}</div>@endif
             @if($errors->any())<div class="errors" role="alert"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-            @if(!request()->routeIs('admin.lessons.edit','admin.courses.lessons.create','admin.students.create','admin.students.edit','admin.profile.*','admin.notifications.*'))<x-step-tip>{{ match(true) { request()->routeIs('admin.grade-levels.*') => 'ابدأ باسم المرحلة الدراسية؛ ستظهر عند إضافة المواد وحسابات الطلاب.', request()->routeIs('admin.courses.*') => 'اختر المرحلة، اكتب اسم المادة، ثم انشرها أو احفظها كمسودة. أضف المحاضرات من صفحة المحاضرات.', request()->routeIs('admin.students.*') => 'افتح ملف الطالب لإدارة اشتراكه ومواده ورمز دخوله، مع الاحتفاظ بتقدّمه.', request()->routeIs('admin.student-progress*') => 'اختر الطالب أو المادة لتعرف آخر محاضرة ونقطة توقفه.', request()->routeIs('admin.admins.*','admin.roles.*') => 'امنح كل عضو صلاحيات المهام التي يحتاجها فقط.', default => 'اختر القسم من القائمة؛ التغييرات التي تحفظها تظهر مباشرة في المنصة.' } }}</x-step-tip>@endif
+            @if(request()->routeIs('admin.dashboard'))<x-guide-download audience="teacher" />@endif
+            <x-usage-guide audience="teacher" />
             @yield('content')
         </main>
         <footer class="instructor-footer"><span>{{ $siteBrand['name'] }} · {{ $siteBrand['tagline'] }}</span><span>{{ $isPreview ? 'بيانات تجريبية · تحفظ تغييرات المعاينة على جهازك' : 'مساحة إدارة المحتوى والطلاب' }}</span></footer>

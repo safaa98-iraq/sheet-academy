@@ -10,6 +10,10 @@ const root = path.resolve(process.env.PRIVATE_STORAGE_ROOT || '../storage/app/pr
 const heights = [1080, 720, 480, 360, 240];
 const maxBitrates = {1080: ['5000k', '7500k'], 720: ['2800k', '4200k'], 480: ['1400k', '2100k'], 360: ['800k', '1200k'], 240: ['400k', '600k']};
 
+export class SupersededVideoJobError extends Error {
+    constructor() {super('Video processing request was replaced by a newer upload');}
+}
+
 function safePath(relativePath) {
     const fullPath = path.resolve(root, relativePath);
     if (!fullPath.startsWith(`${root}${path.sep}`)) throw new Error('Path escapes private storage root');
@@ -25,6 +29,7 @@ export async function reportStatus(job, status, details = {}) {
         body: JSON.stringify({video_id: job.video_id, lesson_id: job.lesson_id, job_id: job.job_id, status, ...details}),
         signal: AbortSignal.timeout(8000),
     });
+    if (response.status === 409) throw new SupersededVideoJobError();
     if (!response.ok) throw new Error(`Callback returned ${response.status}`);
 }
 
@@ -43,17 +48,22 @@ async function probe(sourcePath) {
     return {width, height, durationSeconds, hasAudio: data.streams?.some(stream => stream.codec_type === 'audio') || false};
 }
 
-function runFfmpeg(args) {
+function runFfmpeg(args, signal) {
+    signal?.throwIfAborted();
     return new Promise((resolve, reject) => {
         const child = spawn(process.env.FFMPEG_PATH || 'ffmpeg', args, {stdio: ['ignore', 'ignore', 'pipe']});
         const deadline = setTimeout(() => child.kill('SIGKILL'), 2 * 60 * 60 * 1000);
+        const abort = () => child.kill('SIGKILL');
+        signal?.addEventListener('abort', abort, {once: true});
+        const cleanup = () => {clearTimeout(deadline); signal?.removeEventListener('abort', abort);};
         let recentErrorOutput = '';
         child.stderr?.on('data', chunk => {
             recentErrorOutput = `${recentErrorOutput}${chunk.toString()}`.slice(-8192);
         });
-        child.on('error', () => {clearTimeout(deadline); reject(new Error('FFmpeg could not be started'));});
+        child.on('error', () => {cleanup(); reject(new Error('FFmpeg could not be started'));});
         child.on('close', code => {
-            clearTimeout(deadline);
+            cleanup();
+            if (signal?.aborted) {reject(signal.reason); return;}
             if (code === 0) resolve();
             else {
                 process.stderr.write(`ffmpeg failed: ${recentErrorOutput.slice(-1000)}\n`);
@@ -63,7 +73,8 @@ function runFfmpeg(args) {
     });
 }
 
-export async function processVideo(job) {
+export async function processVideo(job, {signal} = {}) {
+    signal?.throwIfAborted();
     const sourcePath = safePath(job.source_path);
     const outputPath = safePath(job.output_path);
     const keyPath = safePath(job.key_path);
@@ -86,6 +97,8 @@ export async function processVideo(job) {
 
     try {
         for (const height of selectedHeights) {
+            signal?.throwIfAborted();
+            process.stdout.write(`video ${job.video_id}: preparing ${height}p\n`);
             const renditionPath = path.join(temporaryOutput, `v${height}`);
             await fs.mkdir(renditionPath, {recursive: true, mode: 0o700});
             const [maxrate, bufsize] = maxBitrates[height] || ['400k', '600k'];
@@ -97,7 +110,7 @@ export async function processVideo(job) {
                 '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-f', 'hls', '-hls_time', '4', '-hls_playlist_type', 'vod',
                 '-hls_flags', 'independent_segments', '-hls_key_info_file', keyInfoPath,
                 '-hls_segment_filename', path.join(renditionPath, 'segment_%05d.ts'), path.join(renditionPath, 'index.m3u8'),
-            ]);
+            ], signal);
         }
 
         const master = ['#EXTM3U', '#EXT-X-VERSION:3'];
@@ -108,6 +121,10 @@ export async function processVideo(job) {
             master.push(`#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},AVERAGE-BANDWIDTH=${Math.floor(bandwidth * 0.8)},RESOLUTION=${width}x${height},CODECS="${codecs}"`);
             master.push(`v${height}/index.m3u8`);
         }
+        signal?.throwIfAborted();
+        // Revalidate the request before publishing output after a long encode or a worker restart.
+        await reportStatus(job, 'processing');
+        signal?.throwIfAborted();
         await fs.writeFile(path.join(temporaryOutput, 'master.m3u8'), `${master.join('\n')}\n`, {mode: 0o600});
         await fs.rm(outputPath, {recursive: true, force: true});
         await fs.rename(temporaryOutput, outputPath);

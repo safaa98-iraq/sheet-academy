@@ -180,7 +180,6 @@ class CurriculumController extends Controller
             $this->softDeleteBranch($child);
         }
         if ($node->type === 'lesson' && $node->lesson !== null) {
-            $node->lesson->attachments()->delete();
             $node->lesson->delete();
         }
         $node->delete();

@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Services\StudentDeviceBindingService;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Testing\TestResponse;
@@ -11,6 +12,7 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withCookie(StudentDeviceBindingService::COOKIE_NAME, hash('sha256', 'test-browser'))->withCredentials();
         if (! ParallelTesting::token()) {
             ParallelTesting::resolveTokenUsing(static fn (): string => 'filesystem-'.getmypid());
         }

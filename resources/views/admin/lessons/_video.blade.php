@@ -10,5 +10,6 @@
                         @endforeach
                         <span class="muted" data-save-video-resolutions>الدقات المختارة تُحفظ مع زر النشر في نهاية النموذج.</span>
                     </div>
+                    <x-step-tip>لتحديث الدقات، حدد ما تريد إتاحته ثم احفظ بالنشر. إلغاء الاختيار يخفي الدقة عن الطالب؛ «حذف ملفات الدقة» يحذف نسختها ويحتاج إلى تأكيد. عند فشل التجهيز استخدم إعادة المعالجة بعد مراجعة الرسالة.</x-step-tip>
                     <button class="btn small" type="button" data-video-retry hidden>إعادة معالجة الفيديو</button>
                 </section>

@@ -360,6 +360,8 @@ qsa('[data-video-upload]').forEach(panel => {
         resolutionBox.hidden = status.status !== 'ready';
         retryButton.hidden = status.status !== 'failed';
         if (status.error) message.textContent = status.error;
+        else if (status.status === 'queued') message.textContent = 'اكتمل رفع الملف 100٪ وهو ينتظر تجهيز الفيديو. لا يلزم إعادة رفعه؛ سيصبح قابلًا للمشاهدة بعد اكتمال المعالجة.';
+        else if (status.status === 'processing') message.textContent = 'اكتمل رفع الملف 100٪. جارٍ ضغط الفيديو وتشفيره وتجهيز دقات المشاهدة؛ الفيديو الطويل قد يحتاج وقتًا. يمكنك مغادرة الصفحة والعودة لمتابعة الحالة، ولا يلزم إعادة الرفع.';
         if (['queued', 'processing', 'ready'].includes(status.status)) {
             const type = document.querySelector('#lecture-content-form [name="type"]') || panel.closest('form')?.querySelector('[name="content_type"]');
             if (type) type.value = 'video';

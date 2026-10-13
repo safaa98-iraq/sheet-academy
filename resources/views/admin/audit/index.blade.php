@@ -7,11 +7,12 @@
 @php
     $eventLabels = [
         'login_succeeded' => 'دخول ناجح', 'login_failed' => 'فشل رمز الدخول', 'logout' => 'تسجيل خروج',
+        'device_login_blocked' => 'رفض جهاز غير معتمد', 'device_bound' => 'اعتماد الجهاز', 'device_change_allowed' => 'إذن تغيير الجهاز', 'session_replaced' => 'تجديد جلسة الجهاز المعتمد',
         'multiple_device_login' => 'دخول من جهاز آخر', 'lesson_opened' => 'فتح درس',
         'watch_started' => 'بدء مشاهدة', 'watch_heartbeat' => 'متابعة مشاهدة', 'view_exited' => 'مغادرة المشاهدة',
         'document_opened' => 'فتح ملزمة', 'suspicious_devtools' => 'أدوات مطور', 'suspicious_copy' => 'محاولة نسخ',
         'suspicious_print' => 'محاولة طباعة', 'suspicious_watermark' => 'عبث بالبصمة', 'stale_view_link' => 'رابط قديم',
-        'content_deleted_by_admin' => 'حذف محتوى من الأستاذ',
+        'content_restored_by_admin' => 'استرجاع محتوى من الأرشيف', 'content_deleted_by_admin' => 'حذف محتوى من الأستاذ',
         'automatic_suspension' => 'إيقاف تلقائي',
         'suspicious_activity_flood' => 'تجاوز حد طلبات النشاط',
     ];

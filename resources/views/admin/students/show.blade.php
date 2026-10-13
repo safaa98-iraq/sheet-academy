@@ -7,6 +7,23 @@
 <section class="account-card"><div class="account-card-heading"><x-icon name="user"/><h2>بيانات الطالب</h2></div><dl class="account-details"><div><dt>الاسم الكامل</dt><dd>{{ $student->name }}</dd></div><div><dt>الكلية</dt><dd>{{ $student->college ?: 'غير مسجلة' }}</dd></div><div><dt>الهاتف الشخصي</dt><dd dir="ltr">{{ $student->phone ?: 'غير مسجل' }}</dd></div><div><dt>البريد الإلكتروني</dt><dd dir="ltr">{{ $student->email ?: 'غير مسجل' }}</dd></div><div><dt>المرحلة الدراسية</dt><dd>{{ $student->studyGradeLevel?->name ?? $student->gradeLevel?->name ?? 'غير مسجلة' }}</dd></div><div><dt>تاريخ الانضمام</dt><dd>{{ $student->created_at->copy()->timezone('Asia/Baghdad')->format('Y-m-d') }}</dd></div></dl></section>
 <section class="account-card account-subscription"><div class="account-card-heading"><x-icon name="shield"/><h2>الاشتراك والوصول</h2></div><p class="account-expiry">{{ $student->subscription_expires_at?->copy()->timezone('Asia/Baghdad')->format('Y-m-d') ?? 'بدون انتهاء' }}</p><p class="muted">{{ $student->subscriptionIsActive() ? 'الاشتراك متاح' : 'انتهى الاشتراك' }} · بتوقيت بغداد</p><dl class="account-details compact"><div><dt>المواد المخصصة</dt><dd>{{ $accessibleCourses->count() }}</dd></div><div><dt>نقاط المخالفات</dt><dd>{{ $student->violation_score }}</dd></div><div><dt>آخر نشاط</dt><dd>{{ $student->devices->first()?->last_seen_at?->copy()->timezone('Asia/Baghdad')->format('Y-m-d H:i') ?? 'لم يسجل الدخول بعد' }}</dd></div></dl>@can('update', $student)<x-step-tip>لتجديد الاشتراك اختر «تجديد الاشتراك»، وحدد التاريخ واختر الاحتفاظ بالرمز أو استبداله، ثم احفظ. تجميد الحساب يمنع الدخول حتى إن بقي الاشتراك سارياً.</x-step-tip>@else<x-step-tip>هذه صلاحية مشاهدة بيانات الطالب. تعديل البيانات والوصول يحتاج إلى صلاحية إدارة الطلاب.</x-step-tip>@endcan</section>
 </div>
+<section class="account-card" data-bound-device>
+    <div class="account-card-heading"><x-icon name="shield"/><h2>الجهاز المعتمد للدخول</h2></div>
+    @if($student->bound_device_hash)
+        <p><span class="badge">مرتبط بجهاز واحد</span> اعتُمد في {{ $student->bound_device_at?->copy()->timezone('Asia/Baghdad')->format('Y-m-d H:i') }} بتوقيت بغداد.</p>
+        <p class="student-device-name muted" dir="ltr">{{ $student->bound_device_user_agent ?: 'المتصفح المعتمد' }}</p>
+        <x-step-tip>لا يستطيع الطالب استخدام جهاز أو متصفح آخر، حتى بعد الخروج أو تجديد الرمز. لتغييره امنح الإذن أدناه؛ تنتهي الجلسات القديمة ويُعتمد أول جهاز يسجل دخولاً ناجحاً بعدها.</x-step-tip>
+        @can('update', $student)
+        <form method="post" action="{{ route('admin.students.device-change', $student) }}" data-confirm="السماح بتغيير جهاز الطالب؟ ستنتهي كل جلساته، ويُعتمد أول جهاز يسجل الدخول بعد الإذن. رمز الطالب واشتراكه وتقدّمه محفوظة.">
+            @csrf<label class="agreement-check"><input type="checkbox" name="confirmed" value="1" required> أوافق على تغيير الجهاز وإنهاء جلساته السابقة.</label>
+            <button class="btn" type="submit"><x-icon name="refresh"/>السماح بتغيير الجهاز</button>
+        </form>
+        @endcan
+    @else
+        <p class="muted">بانتظار أول دخول ناجح. سيُربط الحساب بالجهاز والمتصفح المستخدمين في ذلك الدخول.</p>
+    @endif
+    <p class="muted">مسح بيانات الموقع أو استخدام متصفح آخر يحتاج إلى إذن جديد. تغيير شبكة الإنترنت لا يغيّر الجهاز المعتمد.</p>
+</section>
 <section class="admin-form">
     <div class="admin-head"><h2>المواد والتقدّم الدراسي</h2><a class="btn small" href="{{ route('admin.student-progress.show', $student) }}"><x-icon name="chart"/><span>عرض تقدّم الطالب</span></a></div>
     <p class="muted">الطالب يرى المواد المنشورة المسجّل بها فقط. أضف المواد أو أزلها من «تعديل البيانات والمواد».</p>

@@ -64,4 +64,18 @@ class LessonProgressTest extends TestCase
         $this->get(route('admin.student-progress.show', $student))->assertOk()->assertSee($lesson->title)->assertSee('00:42');
         $this->get(route('admin.student-progress.export', ['course_id' => $course->id]))->assertOk()->assertHeader('content-type', 'text/csv; charset=UTF-8');
     }
+
+    public function test_teacher_can_review_progress_for_archived_lessons_and_courses(): void
+    {
+        $student = Student::factory()->create();
+        $course = Course::factory()->create();
+        $lesson = Lesson::factory()->for($course)->create();
+        LessonProgress::create(['student_id' => $student->id, 'lesson_id' => $lesson->id, 'watched_seconds' => 30]);
+        $lesson->delete();
+        $course->delete();
+
+        $this->actingAs(User::factory()->create(['is_super_admin' => true]), 'web')
+            ->get(route('admin.student-progress.show', $student))->assertOk()->assertSee($lesson->title)->assertSee($course->title);
+        $this->assertDatabaseHas('lesson_progress', ['student_id' => $student->id, 'watched_seconds' => 30]);
+    }
 }

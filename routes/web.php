@@ -194,12 +194,14 @@ Route::middleware(['auth:web', 'admin.active'])->prefix('admin')->name('admin.')
         Route::get('/students/{student}/edit', [StudentController::class, 'edit'])->name('students.edit');
         Route::put('/students/{student}', [StudentController::class, 'update'])->name('students.update');
         Route::delete('/students/{student}', [StudentController::class, 'destroy'])->name('students.destroy');
+        Route::post('/students/{student}/device-change', [StudentController::class, 'allowDeviceChange'])->middleware('throttle:5,1,student-device-change')->name('students.device-change');
         Route::post('/students/{student}/token/reveal', [StudentController::class, 'revealToken'])->middleware('throttle:20,1')->name('students.token.reveal');
         Route::post('/students/{student}/token', [StudentController::class, 'regenerate'])->name('students.token');
         Route::patch('/students/{student}/status', [StudentController::class, 'status'])->name('students.status');
     });
 
     Route::get('/archive', [ArchivedContentController::class, 'index'])->middleware('permission:courses.manage')->name('archive.index');
+    Route::post('/archive/{type}/{id}/restore', [ArchivedContentController::class, 'restore'])->whereIn('type', ['grade', 'course', 'lesson'])->whereNumber('id')->middleware(['permission:courses.manage', 'throttle:10,1,content-restore'])->name('archive.restore');
     Route::get('/settings', [SiteSettingController::class, 'edit'])->middleware('permission:settings.manage')->name('settings.edit');
     Route::put('/settings', [SiteSettingController::class, 'update'])->middleware('permission:settings.manage')->name('settings.update');
 

@@ -8,6 +8,7 @@ use App\Models\Course;
 use App\Models\LessonProgress;
 use App\Models\Student;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +44,7 @@ class StudentProgressController extends Controller
                 ? min(100, (int) round($student->progress_score / $student->available_duration_seconds * 100))
                 : 0);
         });
-        $stats = Cache::remember('admin.student-progress.stats.v1', now()->addMinutes(2), fn (): array => $this->statistics());
+        $stats = Cache::remember('admin.student-progress.stats.v2', now()->addMinutes(2), fn (): array => $this->statistics());
         $courses = Course::query()->orderBy('title')->get(['id', 'title']);
 
         return view('admin.student-progress.index', compact('students', 'filters', 'courses', 'stats'));
@@ -51,7 +52,10 @@ class StudentProgressController extends Controller
 
     public function show(Student $student): View
     {
-        $progress = $student->progress()->with(['lesson.course'])->latest('updated_at')->paginate(50);
+        $progress = $student->progress()->with([
+            'lesson' => fn (BelongsTo $query) => $query->withTrashed(),
+            'lesson.course' => fn (BelongsTo $query) => $query->withTrashed(),
+        ])->latest('updated_at')->paginate(50);
         $lastLogin = AuditLog::query()->where('student_id', $student->id)->where('event', 'login_succeeded')->latest()->value('created_at');
         $totals = $student->progress()->selectRaw('COUNT(*) as lessons_started, SUM(watched_seconds) as watched_seconds, SUM(CASE WHEN completed_at IS NOT NULL THEN 1 ELSE 0 END) as lessons_completed')->first();
 
@@ -182,8 +186,16 @@ class StudentProgressController extends Controller
         return [
             'active_students' => Student::query()->where('status', 'active')->count(),
             'average_completion' => (int) round((int) ($progressSummary->completed ?? 0) / max(1, (int) ($progressSummary->started ?? 0)) * 100),
-            'most_watched' => $mostWatched,
-            'drop_off' => $dropOff,
+            // Cache permits scalar data only; query collections cannot be restored safely.
+            'most_watched' => $mostWatched->map(fn (object $row): array => [
+                'title' => (string) $row->title,
+                'watched_seconds' => (int) $row->watched_seconds,
+            ])->all(),
+            'drop_off' => $dropOff->map(fn (object $row): array => [
+                'title' => (string) $row->title,
+                'students_count' => (int) $row->students_count,
+                'average_position' => (float) $row->average_position,
+            ])->all(),
         ];
     }
 }
