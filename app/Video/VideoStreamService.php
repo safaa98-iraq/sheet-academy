@@ -5,8 +5,8 @@ namespace App\Video;
 use App\Models\LessonVideo;
 use App\Models\Student;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class VideoStreamService

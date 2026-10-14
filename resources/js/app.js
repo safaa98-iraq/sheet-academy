@@ -459,7 +459,8 @@ qsa('[data-video-upload]').forEach(panel => {
         try {
             const response = await request(panel.dataset.retryUrl, 'POST');
             if (!response.ok) throw new Error('تعذّرت إعادة المعالجة.');
-            message.textContent = 'أُرسلت محاولة المعالجة إلى قائمة الانتظار.';
+            const result = await response.json();
+            message.textContent = result.status === 'ready' ? 'الفيديو جاهز للمشاهدة بالجودة الأصلية.' : 'أُرسلت محاولة المعالجة إلى قائمة الانتظار.';
             await refreshVideoStatus();
         } catch (error) { message.textContent = error.message; }
         finally { retryButton.disabled = false; }

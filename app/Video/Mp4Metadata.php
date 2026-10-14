@@ -37,7 +37,7 @@ class Mp4Metadata
     }
 
     /** @param resource $file
-     *  @return \Generator<int, array{type: string, data: int, end: int}>
+     * @return \Generator<int, array{type: string, data: int, end: int}>
      */
     private function boxes($file, int $start, int $end, int &$count): \Generator
     {
@@ -67,7 +67,7 @@ class Mp4Metadata
     }
 
     /** @param resource $file
-     *  @param array{duration_seconds: int, width: int, height: int} $metadata
+     * @param  array{duration_seconds: int, width: int, height: int}  $metadata
      */
     private function movie($file, int $start, int $end, array &$metadata, int &$count, int $depth = 0): void
     {
