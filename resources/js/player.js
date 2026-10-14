@@ -22,7 +22,7 @@ function writePreference(key, value) {
 
 function createQualityAdapter(player, onPreferenceChange) {
     const key = `academy:quality:${storageScope()}`;
-    const options = ['auto', '1080', '720', '480', '360', '240'];
+    const options = [...player.querySelectorAll('[data-quality-value]')].map(option => option.dataset.qualityValue);
     let preference = player.dataset.preferredQuality?.replace(/p$/, '') || readPreference(key, 'auto');
     if (!options.includes(preference)) preference = 'auto';
     let effectiveHeight = 720;
@@ -79,7 +79,6 @@ function createQualityAdapter(player, onPreferenceChange) {
     render();
 
     return {
-        setDirect() { button.closest('.player-quality').hidden = true; },
         attachNative(callback) { nativeSwitch = callback; apply(); },
         attachHls(instance) {
             if (!instance || !Array.isArray(instance.levels)) return;
@@ -146,14 +145,22 @@ function initializePlayer(player) {
         if (streamType === 'mp4') {
             hls?.destroy();
             hls = null;
-            qualityAdapter.setDirect();
-            media.addEventListener('loadedmetadata', () => {
-                if (savedPosition > 0 && Number.isFinite(media.duration)) media.currentTime = Math.min(savedPosition, media.duration);
-                seek.max = String(media.duration);
-                if (restorePlayback && !securityStopped) media.play().catch(() => {});
-            }, {once: true});
-            media.src = mediaUrl;
-            media.load();
+            qualityAdapter.attachNative(preference => {
+                const restorePosition = media.currentTime || savedPosition;
+                const keepPlaying = !media.paused || restorePlayback;
+                const heights = Object.keys(renditions).map(Number).sort((a, b) => a - b);
+                const slow = ['slow-2g', '2g', '3g'].includes(navigator.connection?.effectiveType);
+                const automaticHeight = slow ? heights[0] : (heights.filter(height => height <= 720).at(-1) || heights.at(-1));
+                const selected = preference === 'auto' ? automaticHeight : Number(preference);
+                media.addEventListener('loadedmetadata', () => {
+                    if (restorePosition > 0 && Number.isFinite(media.duration)) media.currentTime = Math.min(restorePosition, media.duration);
+                    seek.max = String(media.duration);
+                    qualityAdapter.setEffectiveQuality(Math.min(media.videoWidth, media.videoHeight));
+                    if (keepPlaying && !securityStopped) media.play().catch(() => {});
+                }, {once: true});
+                media.src = renditions[selected] || mediaUrl;
+                media.load();
+            });
             return;
         }
         const {default: Hls} = await import('hls.js/light');

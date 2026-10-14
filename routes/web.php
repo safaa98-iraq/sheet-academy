@@ -236,6 +236,7 @@ Route::middleware(['auth:web', 'admin.active'])->prefix('admin')->name('admin.')
     Route::post('/lessons/{lesson}/attachments', [LessonAttachmentController::class, 'store'])->middleware('permission:courses.manage')->name('lessons.attachments.store');
     Route::options('/lessons/{lesson}/video-uploads', [VideoUploadController::class, 'options'])->middleware('permission:courses.manage')->name('lessons.video-uploads.options');
     Route::post('/lessons/{lesson}/video-uploads', [VideoUploadController::class, 'start'])->middleware(['permission:courses.manage', 'throttle:video-upload'])->name('lessons.video-uploads.start');
+    Route::post('/lessons/{lesson}/video-variants', [VideoUploadController::class, 'start'])->middleware(['permission:courses.manage', 'throttle:video-upload'])->name('lessons.video-variants.start');
     Route::match(['HEAD'], '/video-uploads/{upload}', [VideoUploadController::class, 'head'])->middleware('permission:courses.manage')->name('video-uploads.head');
     Route::patch('/video-uploads/{upload}', [VideoUploadController::class, 'chunk'])->middleware(['permission:courses.manage', 'throttle:video-upload'])->name('video-uploads.chunk');
     Route::post('/video-uploads/{upload}/complete', [VideoUploadController::class, 'complete'])->middleware(['permission:courses.manage', 'throttle:video-upload'])->name('video-uploads.complete');

@@ -40,7 +40,7 @@ class DirectVideoTest extends TestCase
         $this->assertSame(64, $video->source_width);
         $this->assertSame(48, $video->source_height);
         $this->assertNull($video->key_path);
-        $this->assertSame([], $video->available_resolutions);
+        $this->assertSame([48], $video->available_resolutions);
         $this->assertSame(2, $lesson->fresh()->duration_seconds);
         $this->assertSame('complete', $upload->fresh()->status);
         $this->assertSame($contents, Storage::disk('private')->get($upload->path));

@@ -21,8 +21,11 @@ class VideoUploadService
 
     private const ALLOWED_MIMES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska', 'video/x-msvideo', 'video/3gpp', 'video/mpeg', 'video/mp2t'];
 
-    public function start(User $user, Lesson $lesson, string $filename, int $size, string $fingerprint): VideoUpload
+    public function start(User $user, Lesson $lesson, string $filename, int $size, string $fingerprint, ?LessonVideo $variantOf = null): VideoUpload
     {
+        if ($variantOf !== null) {
+            $fingerprint = hash('sha256', $fingerprint.'|variant|'.$variantOf->source_path);
+        }
         $safeFilename = basename(str_replace('\\', '/', $filename));
         $existing = VideoUpload::query()->where('user_id', $user->id)->where('fingerprint', $fingerprint)
             ->where('lesson_id', $lesson->id)->where('original_name', $safeFilename)->where('expected_size', $size)
@@ -47,11 +50,16 @@ class VideoUploadService
         touch($absolutePath);
         chmod($absolutePath, 0600);
 
-        return VideoUpload::query()->create([
+        $upload = VideoUpload::query()->create([
             'uuid' => $uuid, 'fingerprint' => $fingerprint, 'lesson_id' => $lesson->id, 'user_id' => $user->id,
             'original_name' => $safeFilename, 'expected_size' => $size,
             'offset' => 0, 'path' => $path, 'status' => 'uploading', 'expires_at' => now()->addDays(7),
         ]);
+        if ($variantOf !== null) {
+            Storage::disk('private')->put($path.'.variant', json_encode(['source' => $variantOf->source_path], JSON_THROW_ON_ERROR));
+        }
+
+        return $upload;
     }
 
     public function prepareDirect(LessonVideo $video): void
@@ -69,10 +77,11 @@ class VideoUploadService
                 'status' => 'ready', 'output_path' => 'direct/'.$current->lesson_id,
                 'key_path' => null, 'key_fingerprint' => null, 'source_width' => $metadata['width'],
                 'source_height' => $metadata['height'], 'duration_seconds' => $metadata['duration_seconds'],
-                'available_resolutions' => [], 'enabled_resolutions' => [], 'error_message' => null, 'processed_at' => now(),
+                'available_resolutions' => [min($metadata['width'], $metadata['height'])],
+                'enabled_resolutions' => [min($metadata['width'], $metadata['height'])], 'error_message' => null, 'processed_at' => now(),
             ]);
             $current->lesson->update([
-                'video_status' => 'ready', 'duration_seconds' => $metadata['duration_seconds'], 'available_resolutions' => [],
+                'video_status' => 'ready', 'duration_seconds' => $metadata['duration_seconds'], 'available_resolutions' => [min($metadata['width'], $metadata['height'])],
             ]);
         });
         app(LessonPublicationService::class)->notify($video->lesson->fresh());
@@ -202,6 +211,10 @@ class VideoUploadService
             $upload->update(['status' => 'rejected']);
             Storage::disk('private')->delete($upload->path);
             throw ValidationException::withMessages(['video' => 'نوع الملف غير مدعوم. ارفع فيديو صالحاً بصيغة MP4 أو MOV أو WebM أو MKV.']);
+        }
+
+        if (Storage::disk('private')->exists($upload->path.'.variant')) {
+            return app(DirectVideoRenditions::class)->attach($upload);
         }
 
         $lesson = $upload->lesson;

@@ -2,7 +2,7 @@ name: Build Hostinger package
 on:
   workflow_dispatch:
   push:
-    branches: [codex/hostinger-preparation, codex/shared-hosting-video]
+    branches: [codex/hostinger-preparation, codex/shared-hosting-video, codex/direct-video-qualities]
   pull_request:
     paths:
       - 'app/**'
@@ -35,14 +35,14 @@ jobs:
       - name: Format changed PHP files
         run: |
           vendor/bin/pint --dirty --format agent
-          vendor/bin/pint --format agent app/Video/Mp4Metadata.php app/Video/VideoProcessingGateway.php app/Video/VideoStreamService.php app/Video/VideoUploadService.php app/Models/LessonVideo.php app/Http/Controllers/Admin/VideoUploadController.php app/Http/Controllers/Student/VideoStreamController.php config/services.php tests/Feature/DirectVideoTest.php
+          vendor/bin/pint --format agent app/Video/DirectVideoRenditions.php app/Video/Mp4Metadata.php app/Video/VideoProcessingGateway.php app/Video/VideoStreamService.php app/Video/VideoUploadService.php app/Models/LessonVideo.php app/Http/Controllers/Admin/VideoUploadController.php app/Http/Controllers/Student/VideoStreamController.php config/services.php routes/web.php app/Http/Controllers/Student/PlayerPreferenceController.php tests/Feature/DirectVideoTest.php tests/Feature/DirectVideoRenditionsTest.php
           git diff --exit-code
       - name: Prepare isolated test environment
         run: |
           php -r 'file_put_contents(".env.testing", "APP_KEY=base64:".base64_encode(random_bytes(32)).PHP_EOL);'
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg poppler-utils
-      - run: php artisan test --compact tests/Feature/DirectVideoTest.php
+      - run: php artisan test --compact tests/Feature/DirectVideoTest.php tests/Feature/DirectVideoRenditionsTest.php
       - run: php artisan test --compact
       - run: composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
       - run: composer check-platform-reqs --no-dev

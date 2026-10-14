@@ -6,7 +6,13 @@
     </button>
     <div id="player-quality-options" class="quality-popover" data-quality-options hidden role="group" aria-label="جودة الفيديو">
         <strong>جودة الفيديو</strong>
-        @foreach(['auto' => 'تلقائي', '1080' => '1080p', '720' => '720p', '480' => '480p', '360' => '360p', '240' => '240p'] as $quality => $label)
+        @php
+            $qualities = array_values(array_unique(array_map('intval', $available ?? [])));
+            rsort($qualities);
+            $qualityLabels = ['auto' => 'تلقائي'];
+            foreach ($qualities as $height) { $qualityLabels[(string) $height] = $height.'p'; }
+        @endphp
+        @foreach($qualityLabels as $quality => $label)
             @if($quality === 'auto' || in_array((int) $quality, $available ?? [], true))
             <button type="button" data-quality-value="{{ $quality }}" aria-pressed="{{ $quality === 'auto' ? 'true' : 'false' }}">
                 <span>{{ $label }} @if($quality === 'auto')<small data-auto-quality>(720p)</small>@endif</span><span data-quality-check aria-hidden="true">{{ $quality === 'auto' ? '✓' : '' }}</span>
