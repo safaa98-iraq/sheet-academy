@@ -11,13 +11,44 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class VideoStreamService
 {
-    public function directFile(LessonVideo $video): BinaryFileResponse
+    /** @return array<string, mixed> */
+    public function directSession(LessonVideo $video, ?Student $student, string $viewLink): array
+    {
+        $expiresAt = now()->addMinutes(8);
+        $sources = app(DirectVideoRenditions::class)->sources($video);
+        $heights = $student === null ? array_keys($sources) : ($video->enabled_resolutions ?: array_keys($sources));
+        $heights = array_values(array_intersect(array_map('intval', $heights), array_map('intval', array_keys($sources))));
+        rsort($heights);
+        $renditions = [];
+        foreach ($heights as $height) {
+            $renditions[$height] = $this->signedAssetUrl($video, $student, 'mp4/v'.$height.'.mp4', $expiresAt, $viewLink);
+        }
+        abort_if($sources !== [] && $renditions === [], 404);
+
+        return [
+            'stream_type' => 'mp4',
+            'media_url' => $renditions === [] ? $this->signedAssetUrl($video, $student, 'source.mp4', $expiresAt, $viewLink) : reset($renditions),
+            'rendition_urls' => $renditions, 'expires_at' => $expiresAt->toIso8601String(),
+        ];
+    }
+
+    public function directFile(LessonVideo $video, ?int $height = null, bool $preview = false): BinaryFileResponse
     {
         abort_unless($video->isDirect(), 404);
-        abort_unless(preg_match('/\Avideo-uploads\/[a-f0-9-]{36}\.part\z/i', (string) $video->source_path) === 1, 404);
-        abort_unless(Storage::disk('private')->exists($video->source_path), 404);
+        $path = $video->source_path;
+        $sources = app(DirectVideoRenditions::class)->sources($video);
+        if ($height !== null || $sources !== []) {
+            $height ??= min((int) $video->source_width, (int) $video->source_height);
+            abort_unless(isset($sources[$height]), 404);
+            if (! $preview && $video->available_resolutions !== []) {
+                abort_unless(in_array($height, array_map('intval', $video->enabled_resolutions ?? []), true), 404);
+            }
+            $path = $sources[$height]['path'];
+        }
+        abort_unless(preg_match('/\Avideo-uploads\/(?:variants\/)?[a-f0-9-]{36}\.part\z/i', (string) $path) === 1, 404);
+        abort_unless(Storage::disk('private')->exists($path), 404);
 
-        return response()->file(Storage::disk('private')->path($video->source_path), [
+        return response()->file(Storage::disk('private')->path($path), [
             'Content-Type' => 'video/mp4', 'Cache-Control' => 'private, no-store, max-age=0',
             'X-Content-Type-Options' => 'nosniff', 'Content-Disposition' => 'inline',
         ]);

@@ -358,6 +358,8 @@ qsa('[data-video-upload]').forEach(panel => {
         const processedLabel = qs('[data-processed-video]');
         if (processedLabel) processedLabel.textContent = statusText.textContent;
         resolutionBox.hidden = status.status !== 'ready' || status.resolutions.length === 0;
+        const addQuality = qs('[data-video-add-quality]', panel);
+        if (addQuality) addQuality.disabled = status.status !== 'ready' || status.stream_type !== 'mp4';
         retryButton.hidden = status.status !== 'failed';
         if (status.error) message.textContent = status.error;
         else if (status.status === 'queued') message.textContent = 'اكتمل رفع الملف 100٪ وهو ينتظر تجهيز الفيديو. لا يلزم إعادة رفعه؛ سيصبح قابلًا للمشاهدة بعد اكتمال المعالجة.';
@@ -381,6 +383,7 @@ qsa('[data-video-upload]').forEach(panel => {
                     const label = document.createElement('label');
                     input = document.createElement('input'); input.type = 'checkbox'; input.value = height; input.dataset.videoResolution = '';
                     label.append(input, document.createTextNode(` بث ${height}p`)); row.append(label);
+                    const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'text-button'; remove.dataset.deleteVideoResolution = ''; remove.dataset.height = String(height); remove.textContent = 'حذف ملفات الدقة'; row.append(remove);
                     resolutionBox.insertBefore(row, resolutionBox.querySelector('[data-save-video-resolutions]'));
                 }
                 if (statusText.dataset.resolutions !== JSON.stringify(available)) input.checked = enabled.includes(height);
@@ -408,18 +411,19 @@ qsa('[data-video-upload]').forEach(panel => {
         const button = event.currentTarget;
         button.disabled = true;
         try {
+            const startUrl = qs('[data-video-add-quality]', panel)?.checked ? panel.dataset.variantUrl : panel.dataset.startUrl;
             if (window.academySaveLecture) await window.academySaveLecture();
             fileInput.disabled = true;
             const fingerprint = await fingerprintFile(file);
             message.textContent = 'جارٍ تجهيز الرفع القابل للاستئناف…';
-            const session = await retryUpload(() => uploadForm(panel.dataset.startUrl, null, {csrf: panel.dataset.csrf, headers: {
+            const session = await retryUpload(() => uploadForm(startUrl, null, {csrf: panel.dataset.csrf, headers: {
                 'Tus-Resumable': '1.0.0', 'Upload-Length': String(file.size), 'Upload-Metadata': videoUploadMetadata(file, fingerprint),
             }}));
             await new Promise((resolve, reject) => {
                 const upload = new tus.Upload(file, {
-                    endpoint: panel.dataset.startUrl,
+                    endpoint: startUrl,
                     uploadUrl: session.upload_url,
-                    fingerprint: async () => `academy:${panel.dataset.startUrl}:${fingerprint}`,
+                    fingerprint: async () => `academy:${startUrl}:${fingerprint}`,
                     removeFingerprintOnSuccess: true,
                     chunkSize: 512 * 1024,
                     retryDelays: [0, ...uploadRetryDelays],
@@ -477,9 +481,11 @@ qsa('[data-video-upload]').forEach(panel => {
         } catch (error) { message.textContent = error.message; }
         finally { button.disabled = false; }
     });
-    qsa('[data-delete-video-resolution]', panel).forEach(button => button.addEventListener('click', async () => {
+    panel.addEventListener('click', async event => {
+        const button = event.target.closest('[data-delete-video-resolution]');
+        if (!button || !panel.contains(button) || button.disabled) return;
         const height = Number(button.dataset.height);
-        if (!window.confirm(`سيُحذف ملف ${height}p من مساحة الخادم نهائياً. لاستعادته يجب إعادة معالجة الفيديو. هل تريد المتابعة؟`)) return;
+        if (!window.confirm(`سيُحذف ملف ${height}p من مساحة الخادم نهائياً. لإتاحتها مجدداً، ارفع نسخة الدقة أو أعد تجهيز الفيديو. هل تريد المتابعة؟`)) return;
         button.disabled = true;
         const url = panel.dataset.deleteResolutionUrl.replace(/\/0(?:\?|$)/, `/${height}`);
         try {
@@ -493,7 +499,7 @@ qsa('[data-video-upload]').forEach(panel => {
             message.textContent = error.message;
             button.disabled = false;
         }
-    }));
+    });
     refreshVideoStatus().catch(() => {});
     window.setInterval(() => {
         if (!['queued', 'processing'].includes(statusText.dataset.status)) return;

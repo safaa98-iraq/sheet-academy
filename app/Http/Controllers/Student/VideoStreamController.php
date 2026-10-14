@@ -32,13 +32,8 @@ class VideoStreamController extends Controller
         abort_unless($viewLink !== '', 404);
         $expiresAt = now()->addMinutes(8);
         if ($video->isDirect()) {
-            return response()->json([
-                'stream_type' => 'mp4',
-                'media_url' => URL::temporarySignedRoute('student.video.asset', $expiresAt, [
-                    'video' => $video->id, 'student' => $student->id, 'asset' => 'source.mp4', 'view' => $viewLink,
-                ]),
-                'rendition_urls' => [], 'expires_at' => $expiresAt->toIso8601String(),
-            ])->header('Cache-Control', 'private, no-store');
+            return response()->json(app(VideoStreamService::class)->directSession($video, $student, $viewLink))
+                ->header('Cache-Control', 'private, no-store');
         }
         $url = URL::temporarySignedRoute('student.video.asset', $expiresAt, [
             'video' => $video->id, 'student' => $student->id, 'asset' => 'hls/master.m3u8', 'view' => $viewLink,
@@ -59,9 +54,9 @@ class VideoStreamController extends Controller
         abort_unless($student->is($request->user('student')), 404);
         $this->authorizeStream($student, $video);
         if ($video->isDirect()) {
-            abort_unless($asset === 'source.mp4', 404);
+            abort_unless($asset === 'source.mp4' || preg_match('/\Amp4\/v([1-9]\d{0,4})\.mp4\z/', $asset, $quality) === 1, 404);
 
-            return $streams->directFile($video);
+            return $streams->directFile($video, isset($quality[1]) ? (int) $quality[1] : null);
         }
         abort_unless(preg_match('/\A(?:hls\/(?:master\.m3u8|v[1-9]\d{0,3}\/(?:index\.m3u8|segment_\d+\.ts)))\z/D', $asset) === 1, 404);
         if (preg_match('/\Av(\d+)\//', substr($asset, 4), $resolution)) {

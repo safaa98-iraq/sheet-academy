@@ -1,5 +1,6 @@
 import { guardWatermark, toggleProtectedFullscreen } from './watermark-guard';
 import { flushProgress, getProgress, saveProgress, storageScope } from './progress-store';
+import { directVideoSource } from './direct-video-quality';
 import { playbackBuffer, playbackPosition } from './playback-buffer';
 
 export const formatTime = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
@@ -22,7 +23,7 @@ function writePreference(key, value) {
 
 function createQualityAdapter(player, onPreferenceChange) {
     const key = `academy:quality:${storageScope()}`;
-    const options = ['auto', '1080', '720', '480', '360', '240'];
+    const options = [...player.querySelectorAll('[data-quality-value]')].map(option => option.dataset.qualityValue);
     let preference = player.dataset.preferredQuality?.replace(/p$/, '') || readPreference(key, 'auto');
     if (!options.includes(preference)) preference = 'auto';
     let effectiveHeight = 720;
@@ -79,8 +80,15 @@ function createQualityAdapter(player, onPreferenceChange) {
     render();
 
     return {
-        setDirect() { button.closest('.player-quality').hidden = true; },
-        attachNative(callback) { nativeSwitch = callback; apply(); },
+        restrictTo(heights) {
+            const allowed = new Set(heights.map(String));
+            if (preference !== 'auto' && !allowed.has(preference)) preference = 'auto';
+            player.querySelectorAll('[data-quality-value]').forEach(option => {
+                option.hidden = option.dataset.qualityValue !== 'auto' && !allowed.has(option.dataset.qualityValue);
+            });
+            render();
+        },
+        attachNative(callback) { hls = null; nativeSwitch = callback; apply(); },
         attachHls(instance) {
             if (!instance || !Array.isArray(instance.levels)) return;
             hls = instance;
@@ -146,14 +154,20 @@ function initializePlayer(player) {
         if (streamType === 'mp4') {
             hls?.destroy();
             hls = null;
-            qualityAdapter.setDirect();
-            media.addEventListener('loadedmetadata', () => {
-                if (savedPosition > 0 && Number.isFinite(media.duration)) media.currentTime = Math.min(savedPosition, media.duration);
-                seek.max = String(media.duration);
-                if (restorePlayback && !securityStopped) media.play().catch(() => {});
-            }, {once: true});
-            media.src = mediaUrl;
-            media.load();
+            qualityAdapter.restrictTo(Object.keys(renditions));
+            qualityAdapter.attachNative(preference => {
+                const restorePosition = playbackPosition(media, savedPosition);
+                const keepPlaying = !media.paused || restorePlayback;
+                const selected = directVideoSource(renditions, mediaUrl, preference, navigator.connection?.effectiveType);
+                media.addEventListener('loadedmetadata', () => {
+                    if (restorePosition > 0 && Number.isFinite(media.duration)) media.currentTime = Math.min(restorePosition, media.duration);
+                    seek.max = String(media.duration);
+                    qualityAdapter.setEffectiveQuality(Math.min(media.videoWidth, media.videoHeight));
+                    if (keepPlaying && !securityStopped) media.play().catch(() => {});
+                }, {once: true});
+                media.src = selected.url;
+                media.load();
+            });
             return;
         }
         const {default: Hls} = await import('hls.js/light');

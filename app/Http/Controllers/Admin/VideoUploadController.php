@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StartVideoUploadRequest;
 use App\Models\Lesson;
 use App\Models\LessonVideo;
 use App\Models\VideoUpload;
+use App\Video\DirectVideoRenditions;
 use App\Video\VideoProcessingGateway;
 use App\Video\VideoStreamService;
 use App\Video\VideoUploadService;
@@ -27,11 +28,8 @@ class VideoUploadController extends Controller
         $expiresAt = now()->addMinutes(8);
 
         if ($video->isDirect()) {
-            return response()->json([
-                'stream_type' => 'mp4',
-                'media_url' => URL::temporarySignedRoute('admin.videos.preview-asset', $expiresAt, ['video' => $video->id, 'asset' => 'source.mp4']),
-                'expires_at' => $expiresAt->toIso8601String(),
-            ])->header('Cache-Control', 'private, no-store');
+            return response()->json(app(VideoStreamService::class)->directSession($video, null, ''))
+                ->header('Cache-Control', 'private, no-store');
         }
 
         return response()->json([
@@ -44,9 +42,9 @@ class VideoUploadController extends Controller
     {
         $this->authorizePreview($video);
         if ($video->isDirect()) {
-            abort_unless($asset === 'source.mp4', 404);
+            abort_unless($asset === 'source.mp4' || preg_match('/\Amp4\/v([1-9]\d{0,4})\.mp4\z/', $asset, $quality) === 1, 404);
 
-            return $streams->directFile($video);
+            return $streams->directFile($video, isset($quality[1]) ? (int) $quality[1] : null, true);
         }
         abort_unless(preg_match('/\A(?:hls\/(?:master\.m3u8|v[1-9]\d{0,3}\/(?:index\.m3u8|segment_\d+\.ts)))\z/D', $asset) === 1, 404);
         $path = $video->output_path.'/'.substr($asset, 4);
@@ -85,7 +83,12 @@ class VideoUploadController extends Controller
         abort_if($lesson->course === null, 404);
         $this->authorize('update', $lesson->course);
         $data = $request->validated();
-        $upload = $uploads->start($request->user('web'), $lesson, $data['filename'], (int) $data['size'], $data['fingerprint']);
+        $variantOf = null;
+        if ($request->routeIs('admin.lessons.video-variants.start')) {
+            $variantOf = $lesson->video;
+            abort_unless(config('services.video_worker.mode') === 'direct' && $variantOf?->isDirect() && $variantOf->status === 'ready', 409, 'ارفع الفيديو الأساسي أولاً.');
+        }
+        $upload = $uploads->start($request->user('web'), $lesson, $data['filename'], (int) $data['size'], $data['fingerprint'], $variantOf);
 
         return response()->json(['upload_url' => route('admin.video-uploads.head', $upload), 'complete_url' => route('admin.video-uploads.complete', $upload), 'offset' => $upload->offset], 201, [
             'Location' => route('admin.video-uploads.head', $upload), 'Tus-Resumable' => '1.0.0', 'Upload-Offset' => (string) $upload->offset,
@@ -184,7 +187,7 @@ class VideoUploadController extends Controller
         return response()->json([
             'status' => $video?->status ?? 'not_uploaded', 'resolutions' => $video?->available_resolutions ?? [],
             'enabled_resolutions' => $video?->enabled_resolutions ?? [], 'duration_seconds' => $video?->duration_seconds,
-            'error' => $video?->error_message,
+            'error' => $video?->error_message, 'stream_type' => $video?->isDirect() ? 'mp4' : 'hls',
         ]);
     }
 
@@ -194,7 +197,7 @@ class VideoUploadController extends Controller
         $this->authorize('update', $lesson->course);
         $data = $request->validate([
             'resolutions' => ['required', 'array', 'min:1'],
-            'resolutions.*' => ['required', 'integer', 'min:1', 'max:1080'],
+            'resolutions.*' => ['required', 'integer', 'min:1', 'max:16384'],
         ], [
             'resolutions.required' => 'فعّل دقة واحدة على الأقل للفيديو.',
             'resolutions.min' => 'فعّل دقة واحدة على الأقل للفيديو.',
@@ -213,12 +216,19 @@ class VideoUploadController extends Controller
     {
         abort_if($lesson->course === null, 404);
         $this->authorize('update', $lesson->course);
-        abort_unless($resolution >= 1 && $resolution <= 1080, 404);
+        abort_unless($resolution >= 1 && $resolution <= 16384, 404);
         $video = $lesson->video;
         abort_unless($video !== null && $video->status === 'ready', 409);
         $available = array_map('intval', $video->available_resolutions ?? []);
         abort_unless(in_array($resolution, $available, true), 404);
         abort_if(count($available) < 2, 422, 'لا يمكن حذف آخر دقة متوفرة للفيديو.');
+
+        if ($video->isDirect()) {
+            app(DirectVideoRenditions::class)->remove($video, $resolution);
+            $video->refresh();
+
+            return response()->json(['available_resolutions' => $video->available_resolutions, 'enabled_resolutions' => $video->enabled_resolutions]);
+        }
 
         $gateway->deleteRendition((int) $video->id, $video->output_path, $resolution);
         $available = array_values(array_filter($available, fn (int $height): bool => $height !== $resolution));
