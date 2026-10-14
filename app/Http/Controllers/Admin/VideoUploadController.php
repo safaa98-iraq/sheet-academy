@@ -26,6 +26,14 @@ class VideoUploadController extends Controller
         $this->authorizePreview($video);
         $expiresAt = now()->addMinutes(8);
 
+        if ($video->isDirect()) {
+            return response()->json([
+                'stream_type' => 'mp4',
+                'media_url' => URL::temporarySignedRoute('admin.videos.preview-asset', $expiresAt, ['video' => $video->id, 'asset' => 'source.mp4']),
+                'expires_at' => $expiresAt->toIso8601String(),
+            ])->header('Cache-Control', 'private, no-store');
+        }
+
         return response()->json([
             'manifest_url' => URL::temporarySignedRoute('admin.videos.preview-asset', $expiresAt, ['video' => $video->id, 'asset' => 'hls/master.m3u8']),
             'expires_at' => $expiresAt->toIso8601String(),
@@ -35,6 +43,11 @@ class VideoUploadController extends Controller
     public function previewAsset(LessonVideo $video, string $asset, VideoStreamService $streams): Response
     {
         $this->authorizePreview($video);
+        if ($video->isDirect()) {
+            abort_unless($asset === 'source.mp4', 404);
+
+            return $streams->directFile($video);
+        }
         abort_unless(preg_match('/\A(?:hls\/(?:master\.m3u8|v[1-9]\d{0,3}\/(?:index\.m3u8|segment_\d+\.ts)))\z/D', $asset) === 1, 404);
         $path = $video->output_path.'/'.substr($asset, 4);
         abort_unless(Storage::disk('private')->exists($path), 404);
@@ -152,11 +165,14 @@ class VideoUploadController extends Controller
         } catch (Throwable $exception) {
             $video->update(['status' => 'failed', 'error_message' => 'تعذّر الاتصال بخدمة معالجة الفيديو.']);
             $lesson->update(['video_status' => 'failed']);
+            if ($exception instanceof ValidationException) {
+                throw $exception;
+            }
             report($exception);
             throw ValidationException::withMessages(['video' => 'تعذّر الاتصال بخدمة معالجة الفيديو. حاول مجدداً.']);
         }
 
-        return response()->json(['status' => 'queued'], 202);
+        return response()->json(['status' => $video->fresh()->status], $video->fresh()->status === 'ready' ? 200 : 202);
     }
 
     public function videoStatus(Lesson $lesson): JsonResponse

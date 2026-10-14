@@ -2,6 +2,7 @@
 
 namespace App\Video;
 
+use App\Models\LessonVideo;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -11,6 +12,13 @@ class VideoProcessingGateway
     /** @param array<string, mixed> $payload */
     public function enqueue(array $payload): string
     {
+        if (config('services.video_worker.mode') === 'direct') {
+            $video = LessonVideo::query()->whereKey($payload['video_id'])->where('lesson_id', $payload['lesson_id'])->where('job_id', $payload['job_id'])->firstOrFail();
+            app(VideoUploadService::class)->prepareDirect($video);
+
+            return (string) $payload['job_id'];
+        }
+
         $baseUrl = rtrim((string) config('services.video_worker.url'), '/');
         $token = (string) config('services.video_worker.token');
         if ($baseUrl === '' || $token === '') {

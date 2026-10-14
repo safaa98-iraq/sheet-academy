@@ -5,10 +5,24 @@ namespace App\Video;
 use App\Models\LessonVideo;
 use App\Models\Student;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class VideoStreamService
 {
+    public function directFile(LessonVideo $video): BinaryFileResponse
+    {
+        abort_unless($video->isDirect(), 404);
+        abort_unless(preg_match('/\Avideo-uploads\/[a-f0-9-]{36}\.part\z/i', (string) $video->source_path) === 1, 404);
+        abort_unless(Storage::disk('private')->exists($video->source_path), 404);
+
+        return response()->file(Storage::disk('private')->path($video->source_path), [
+            'Content-Type' => 'video/mp4', 'Cache-Control' => 'private, no-store, max-age=0',
+            'X-Content-Type-Options' => 'nosniff', 'Content-Disposition' => 'inline',
+        ]);
+    }
+
     public function rewritePlaylist(LessonVideo $video, ?Student $student, string $storedPath, string $playlist, string $viewLink): string
     {
         $expiresAt = now()->addMinutes(8);

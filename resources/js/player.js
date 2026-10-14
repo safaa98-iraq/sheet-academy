@@ -79,6 +79,7 @@ function createQualityAdapter(player, onPreferenceChange) {
     render();
 
     return {
+        setDirect() { button.closest('.player-quality').hidden = true; },
         attachNative(callback) { nativeSwitch = callback; apply(); },
         attachHls(instance) {
             if (!instance || !Array.isArray(instance.levels)) return;
@@ -140,8 +141,21 @@ function initializePlayer(player) {
         if (!media || !player.dataset.streamSessionUrl) return;
         const response = await fetch(player.dataset.streamSessionUrl, {credentials: 'same-origin', headers: {'Accept': 'application/json'}});
         if (!response.ok) throw new Error('stream-session-expired');
-        const {manifest_url: manifestUrl, rendition_urls: renditions = {}} = await response.json();
+        const {stream_type: streamType, media_url: mediaUrl, manifest_url: manifestUrl, rendition_urls: renditions = {}} = await response.json();
         const savedPosition = media.currentTime || position;
+        if (streamType === 'mp4') {
+            hls?.destroy();
+            hls = null;
+            qualityAdapter.setDirect();
+            media.addEventListener('loadedmetadata', () => {
+                if (savedPosition > 0 && Number.isFinite(media.duration)) media.currentTime = Math.min(savedPosition, media.duration);
+                seek.max = String(media.duration);
+                if (restorePlayback && !securityStopped) media.play().catch(() => {});
+            }, {once: true});
+            media.src = mediaUrl;
+            media.load();
+            return;
+        }
         const {default: Hls} = await import('hls.js/light');
         if (Hls.isSupported()) {
             if (hls) hls.destroy();

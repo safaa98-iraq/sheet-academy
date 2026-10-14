@@ -14,6 +14,11 @@ class LessonVideo extends Model
         return ['available_resolutions' => 'array', 'enabled_resolutions' => 'array', 'processed_at' => 'datetime'];
     }
 
+    public function isDirect(): bool
+    {
+        return $this->output_path === 'direct/'.$this->lesson_id && $this->source_mime === 'video/mp4';
+    }
+
     public function lesson(): BelongsTo
     {
         return $this->belongsTo(Lesson::class);

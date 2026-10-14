@@ -6,6 +6,8 @@ use App\Models\Lesson;
 use App\Models\LessonVideo;
 use App\Models\User;
 use App\Models\VideoUpload;
+use App\Services\LessonPublicationService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -50,6 +52,30 @@ class VideoUploadService
             'original_name' => $safeFilename, 'expected_size' => $size,
             'offset' => 0, 'path' => $path, 'status' => 'uploading', 'expires_at' => now()->addDays(7),
         ]);
+    }
+
+    public function prepareDirect(LessonVideo $video): void
+    {
+        abort_unless(preg_match('/\Avideo-uploads\/[a-f0-9-]{36}\.part\z/i', (string) $video->source_path) === 1, 422);
+        $path = Storage::disk('private')->path($video->source_path);
+        if (! is_file($path) || (new \finfo(FILEINFO_MIME_TYPE))->file($path) !== 'video/mp4') {
+            throw ValidationException::withMessages(['video' => 'هذا الوضع يقبل MP4 فقط. صدّر الفيديو بترميز H.264 وصوت AAC ثم ارفعه.']);
+        }
+        $metadata = app(Mp4Metadata::class)->read($path);
+        DB::transaction(function () use ($video, $metadata): void {
+            $current = LessonVideo::query()->whereKey($video->id)->lockForUpdate()->firstOrFail();
+            abort_unless($current->job_id === $video->job_id, 409);
+            $current->update([
+                'status' => 'ready', 'output_path' => 'direct/'.$current->lesson_id,
+                'key_path' => null, 'key_fingerprint' => null, 'source_width' => $metadata['width'],
+                'source_height' => $metadata['height'], 'duration_seconds' => $metadata['duration_seconds'],
+                'available_resolutions' => [], 'enabled_resolutions' => [], 'error_message' => null, 'processed_at' => now(),
+            ]);
+            $current->lesson->update([
+                'video_status' => 'ready', 'duration_seconds' => $metadata['duration_seconds'], 'available_resolutions' => [],
+            ]);
+        });
+        app(LessonPublicationService::class)->notify($video->lesson->fresh());
     }
 
     public function append(VideoUpload $upload, int $offset, string $chunk): int
@@ -197,6 +223,9 @@ class VideoUploadService
         } catch (Throwable $exception) {
             $video->update(['status' => 'failed', 'error_message' => 'تعذّر إرسال الفيديو إلى قائمة المعالجة.']);
             $lesson->update(['video_status' => 'failed']);
+            if ($exception instanceof ValidationException) {
+                throw $exception;
+            }
             report($exception);
             throw ValidationException::withMessages(['video' => 'تعذّر الاتصال بخدمة معالجة الفيديو. أعد المحاولة من زر إعادة المعالجة.']);
         }
