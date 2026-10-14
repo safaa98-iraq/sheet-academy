@@ -37,6 +37,13 @@ jobs:
           vendor/bin/pint --dirty --format agent
           vendor/bin/pint --format agent app/Video/Mp4Metadata.php app/Video/VideoProcessingGateway.php app/Video/VideoStreamService.php app/Video/VideoUploadService.php app/Models/LessonVideo.php app/Http/Controllers/Admin/VideoUploadController.php app/Http/Controllers/Student/VideoStreamController.php config/services.php tests/Feature/DirectVideoTest.php
           git diff --exit-code
+      - name: Prepare isolated test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --no-interaction
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg poppler-utils
+      - run: php artisan test --compact tests/Feature/DirectVideoTest.php
       - run: php artisan test --compact
       - run: composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
       - run: composer check-platform-reqs --no-dev
