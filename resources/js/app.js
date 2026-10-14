@@ -359,7 +359,7 @@ qsa('[data-video-upload]').forEach(panel => {
         if (processedLabel) processedLabel.textContent = statusText.textContent;
         resolutionBox.hidden = status.status !== 'ready' || status.resolutions.length === 0;
         const addQuality = qs('[data-video-add-quality]', panel);
-        if (addQuality) addQuality.disabled = status.status !== 'ready';
+        if (addQuality) addQuality.disabled = status.status !== 'ready' || status.stream_type !== 'mp4';
         retryButton.hidden = status.status !== 'failed';
         if (status.error) message.textContent = status.error;
         else if (status.status === 'queued') message.textContent = 'اكتمل رفع الملف 100٪ وهو ينتظر تجهيز الفيديو. لا يلزم إعادة رفعه؛ سيصبح قابلًا للمشاهدة بعد اكتمال المعالجة.';

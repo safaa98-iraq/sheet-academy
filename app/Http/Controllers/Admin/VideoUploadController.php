@@ -187,7 +187,7 @@ class VideoUploadController extends Controller
         return response()->json([
             'status' => $video?->status ?? 'not_uploaded', 'resolutions' => $video?->available_resolutions ?? [],
             'enabled_resolutions' => $video?->enabled_resolutions ?? [], 'duration_seconds' => $video?->duration_seconds,
-            'error' => $video?->error_message,
+            'error' => $video?->error_message, 'stream_type' => $video?->isDirect() ? 'mp4' : 'hls',
         ]);
     }
 

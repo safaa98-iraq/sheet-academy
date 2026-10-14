@@ -45,7 +45,7 @@ class VideoStreamService
             }
             $path = $sources[$height]['path'];
         }
-        abort_unless(preg_match('/\Avideo-uploads\/[a-f0-9-]{36}\.part\z/i', (string) $path) === 1, 404);
+        abort_unless(preg_match('/\Avideo-uploads\/(?:variants\/)?[a-f0-9-]{36}\.part\z/i', (string) $path) === 1, 404);
         abort_unless(Storage::disk('private')->exists($path), 404);
 
         return response()->file(Storage::disk('private')->path($path), [

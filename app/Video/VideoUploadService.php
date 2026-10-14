@@ -33,12 +33,15 @@ class VideoUploadService
         if ($existing !== null && Storage::disk('private')->exists($existing->path)) {
             $this->reconcileOffset($existing);
             $existing->update(['expires_at' => now()->addDays(7)]);
+            if ($variantOf !== null) {
+                Storage::disk('private')->put($existing->path.'.variant', json_encode(['source' => $variantOf->source_path], JSON_THROW_ON_ERROR));
+            }
 
             return $existing;
         }
 
         $uuid = (string) Str::uuid();
-        $path = 'video-uploads/'.$uuid.'.part';
+        $path = 'video-uploads/'.($variantOf !== null ? 'variants/' : '').$uuid.'.part';
         $absolutePath = Storage::disk('private')->path($path);
         if (! is_dir(dirname($absolutePath)) && ! mkdir(dirname($absolutePath), 0700, true) && ! is_dir(dirname($absolutePath))) {
             throw new RuntimeException('تعذّر تجهيز مساحة رفع الفيديو.');
@@ -64,7 +67,7 @@ class VideoUploadService
 
     public function prepareDirect(LessonVideo $video): void
     {
-        abort_unless(preg_match('/\Avideo-uploads\/[a-f0-9-]{36}\.part\z/i', (string) $video->source_path) === 1, 422);
+        abort_unless(preg_match('/\Avideo-uploads\/(?:variants\/)?[a-f0-9-]{36}\.part\z/i', (string) $video->source_path) === 1, 422);
         $path = Storage::disk('private')->path($video->source_path);
         if (! is_file($path) || (new \finfo(FILEINFO_MIME_TYPE))->file($path) !== 'video/mp4') {
             throw ValidationException::withMessages(['video' => 'هذا الوضع يقبل MP4 فقط. صدّر الفيديو بترميز H.264 وصوت AAC ثم ارفعه.']);
@@ -213,7 +216,7 @@ class VideoUploadService
             throw ValidationException::withMessages(['video' => 'نوع الملف غير مدعوم. ارفع فيديو صالحاً بصيغة MP4 أو MOV أو WebM أو MKV.']);
         }
 
-        if (Storage::disk('private')->exists($upload->path.'.variant')) {
+        if (str_starts_with($upload->path, 'video-uploads/variants/')) {
             return app(DirectVideoRenditions::class)->attach($upload);
         }
 

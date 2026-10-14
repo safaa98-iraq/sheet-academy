@@ -97,6 +97,45 @@ class DirectVideoRenditionsTest extends TestCase
         $this->assertSame('ready', $video->fresh()->status);
     }
 
+    public function test_losing_variant_metadata_cannot_replace_the_primary_video_and_starting_again_restores_it(): void
+    {
+        Storage::fake('private');
+        config(['services.video_worker.mode' => 'direct']);
+        [$lesson, $video] = $this->video();
+        $primary = $video->source_path;
+        $this->actingAs(User::factory()->create(['is_super_admin' => true]), 'web');
+        $upload = $this->variant($lesson, 360);
+        Storage::disk('private')->put($upload->path, $this->mp4(360));
+        Storage::disk('private')->delete($upload->path.'.variant');
+
+        $this->postJson(route('admin.video-uploads.complete', $upload))->assertConflict();
+        $this->assertSame($primary, $video->fresh()->source_path);
+        $this->assertSame('ready', $video->fresh()->status);
+        $this->assertSame($upload->id, $this->variant($lesson, 360)->id);
+        $this->postJson(route('admin.video-uploads.complete', $upload))->assertOk();
+        $this->assertSame([720, 360], $video->fresh()->available_resolutions);
+    }
+
+    public function test_uploading_a_new_copy_of_the_primary_quality_updates_the_source_and_keeps_lower_qualities(): void
+    {
+        Storage::fake('private');
+        config(['services.video_worker.mode' => 'direct']);
+        [$lesson, $video, $teacher] = $this->twoQualities();
+        $this->actingAs($teacher, 'web');
+        $original = $video->source_path;
+        $upload = $this->variant($lesson, 720);
+        Storage::disk('private')->put($upload->path, $this->mp4(720));
+
+        $this->postJson(route('admin.video-uploads.complete', $upload))->assertOk();
+        $video->refresh();
+        $this->assertNotSame($original, $video->source_path);
+        $this->assertSame($upload->path, $video->source_path);
+        $this->assertSame([720, 360], $video->available_resolutions);
+        $session = $this->getJson(route('admin.videos.preview-session', $video))->assertOk()->json();
+        $this->get($session['rendition_urls']['720'])->assertOk();
+        $this->get($session['rendition_urls']['360'])->assertOk();
+    }
+
     public function test_a_copy_with_a_different_duration_is_rejected_without_breaking_the_existing_video(): void
     {
         Storage::fake('private');

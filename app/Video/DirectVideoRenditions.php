@@ -34,6 +34,7 @@ class DirectVideoRenditions
     public function attach(VideoUpload $upload): LessonVideo
     {
         $disk = Storage::disk('private');
+        abort_unless($disk->exists($upload->path.'.variant'), 409, 'بيانات جلسة الدقة غير موجودة. ابدأ رفع النسخة من جديد.');
         $marker = json_decode($disk->get($upload->path.'.variant'), true);
         $path = $disk->path($upload->path);
         if ((new \finfo(FILEINFO_MIME_TYPE))->file($path) !== 'video/mp4') {
@@ -54,6 +55,10 @@ class DirectVideoRenditions
             $height = min($metadata['width'], $metadata['height']);
             $sources = $this->sources($video);
             $sources[$height] = ['path' => $upload->path, ...$metadata];
+            if ($height === min((int) $video->source_width, (int) $video->source_height)) {
+                $video->fill(['source_path' => $upload->path, 'source_width' => $metadata['width'],
+                    'source_height' => $metadata['height'], 'source_size' => $upload->expected_size]);
+            }
             $this->write($video, $sources);
             $available = array_map('intval', array_keys($sources));
             rsort($available);
@@ -96,7 +101,7 @@ class DirectVideoRenditions
 
             return $removedPath;
         });
-        if (preg_match('/\Avideo-uploads\/[a-f0-9-]{36}\.part\z/i', $path) === 1) {
+        if (preg_match('/\Avideo-uploads\/(?:variants\/)?[a-f0-9-]{36}\.part\z/i', $path) === 1) {
             Storage::disk('private')->delete($path);
         }
     }
