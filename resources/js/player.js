@@ -1,5 +1,6 @@
 import { guardWatermark, toggleProtectedFullscreen } from './watermark-guard';
 import { flushProgress, getProgress, saveProgress, storageScope } from './progress-store';
+import { directVideoSource } from './direct-video-quality';
 import { playbackBuffer, playbackPosition } from './playback-buffer';
 
 export const formatTime = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
@@ -79,7 +80,15 @@ function createQualityAdapter(player, onPreferenceChange) {
     render();
 
     return {
-        attachNative(callback) { nativeSwitch = callback; apply(); },
+        restrictTo(heights) {
+            const allowed = new Set(heights.map(String));
+            if (preference !== 'auto' && !allowed.has(preference)) preference = 'auto';
+            player.querySelectorAll('[data-quality-value]').forEach(option => {
+                option.hidden = option.dataset.qualityValue !== 'auto' && !allowed.has(option.dataset.qualityValue);
+            });
+            render();
+        },
+        attachNative(callback) { hls = null; nativeSwitch = callback; apply(); },
         attachHls(instance) {
             if (!instance || !Array.isArray(instance.levels)) return;
             hls = instance;
@@ -145,20 +154,18 @@ function initializePlayer(player) {
         if (streamType === 'mp4') {
             hls?.destroy();
             hls = null;
+            qualityAdapter.restrictTo(Object.keys(renditions));
             qualityAdapter.attachNative(preference => {
-                const restorePosition = media.currentTime || savedPosition;
+                const restorePosition = playbackPosition(media, savedPosition);
                 const keepPlaying = !media.paused || restorePlayback;
-                const heights = Object.keys(renditions).map(Number).sort((a, b) => a - b);
-                const slow = ['slow-2g', '2g', '3g'].includes(navigator.connection?.effectiveType);
-                const automaticHeight = slow ? heights[0] : (heights.filter(height => height <= 720).at(-1) || heights.at(-1));
-                const selected = preference === 'auto' ? automaticHeight : Number(preference);
+                const selected = directVideoSource(renditions, mediaUrl, preference, navigator.connection?.effectiveType);
                 media.addEventListener('loadedmetadata', () => {
                     if (restorePosition > 0 && Number.isFinite(media.duration)) media.currentTime = Math.min(restorePosition, media.duration);
                     seek.max = String(media.duration);
                     qualityAdapter.setEffectiveQuality(Math.min(media.videoWidth, media.videoHeight));
                     if (keepPlaying && !securityStopped) media.play().catch(() => {});
                 }, {once: true});
-                media.src = renditions[selected] || mediaUrl;
+                media.src = selected.url;
                 media.load();
             });
             return;

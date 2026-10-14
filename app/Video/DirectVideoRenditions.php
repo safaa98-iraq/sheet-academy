@@ -62,7 +62,7 @@ class DirectVideoRenditions
             $this->write($video, $sources);
             $available = array_map('intval', array_keys($sources));
             rsort($available);
-            $enabled = array_values(array_unique([...($video->enabled_resolutions ?? []), $height]));
+            $enabled = array_values(array_unique([...($video->enabled_resolutions ?: array_keys($sources)), $height]));
             rsort($enabled);
             $video->update(['available_resolutions' => $available, 'enabled_resolutions' => $enabled]);
             $video->lesson->update(['available_resolutions' => $available]);
