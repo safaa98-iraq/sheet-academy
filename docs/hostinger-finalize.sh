@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 PHP_BIN="${PHP_BIN:-php}"
 [[ -f .env ]] || { echo 'Create .env from .env.example and fill the production values first.' >&2; exit 1; }
-"$PHP_BIN" -r 'if (PHP_VERSION_ID < 80300) { fwrite(STDERR, "PHP 8.3 or newer is required.\n"); exit(1); }'
+"$PHP_BIN" -r 'if (PHP_VERSION_ID < 80401) { fwrite(STDERR, "PHP 8.4.1 or newer is required.\n"); exit(1); }'
 "$PHP_BIN" artisan config:clear --no-interaction
 "$PHP_BIN" -r '
 require "vendor/autoload.php";

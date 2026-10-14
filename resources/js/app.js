@@ -357,7 +357,7 @@ qsa('[data-video-upload]').forEach(panel => {
         statusText.textContent = ({not_uploaded: 'لم يُرفع', queued: 'بانتظار المعالجة', processing: 'قيد المعالجة', ready: 'جاهز', failed: 'فشل'})[status.status] || status.status;
         const processedLabel = qs('[data-processed-video]');
         if (processedLabel) processedLabel.textContent = statusText.textContent;
-        resolutionBox.hidden = status.status !== 'ready';
+        resolutionBox.hidden = status.status !== 'ready' || status.resolutions.length === 0;
         retryButton.hidden = status.status !== 'failed';
         if (status.error) message.textContent = status.error;
         else if (status.status === 'queued') message.textContent = 'اكتمل رفع الملف 100٪ وهو ينتظر تجهيز الفيديو. لا يلزم إعادة رفعه؛ سيصبح قابلًا للمشاهدة بعد اكتمال المعالجة.';
@@ -444,7 +444,7 @@ qsa('[data-video-upload]').forEach(panel => {
                 status = await refreshVideoStatus();
                 if (['ready', 'failed'].includes(status.status)) break;
             }
-            if (status?.status === 'ready') message.textContent = `الفيديو جاهز. الدقات: ${status.resolutions.join('، ')}p`;
+            if (status?.status === 'ready') message.textContent = status.resolutions.length ? `الفيديو جاهز. الدقات: ${status.resolutions.join('، ')}p` : 'الفيديو جاهز للمشاهدة بالجودة الأصلية.';
             else if (status?.status === 'failed') message.textContent = status.error || 'فشلت معالجة الفيديو. يمكنك إعادة المحاولة.';
         } catch (error) {
             message.textContent = error.message || 'تعذّر رفع الفيديو. أعد المحاولة مع اختيار الملف نفسه لاستكمال الرفع.';

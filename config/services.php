@@ -36,6 +36,7 @@ return [
     ],
 
     'video_worker' => [
+        'mode' => env('VIDEO_PROCESSING_MODE', 'worker'),
         'url' => env('VIDEO_WORKER_URL'),
         'token' => env('VIDEO_WORKER_TOKEN'),
     ],

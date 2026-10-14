@@ -2,9 +2,13 @@ name: Build Hostinger package
 on:
   workflow_dispatch:
   push:
-    branches: [codex/hostinger-preparation]
+    branches: [codex/hostinger-preparation, codex/shared-hosting-video]
   pull_request:
     paths:
+      - 'app/**'
+      - 'config/**'
+      - 'resources/**'
+      - 'tests/**'
       - 'docs/hostinger-*'
       - 'docs/hostinger.env.example'
       - '.github/workflows/hostinger-package.yml'
@@ -25,6 +29,12 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - run: composer install --prefer-dist --no-interaction --optimize-autoloader
+      - name: Format changed PHP files
+        run: |
+          vendor/bin/pint --format agent app/Video/Mp4Metadata.php app/Video/VideoProcessingGateway.php app/Video/VideoStreamService.php app/Video/VideoUploadService.php app/Models/LessonVideo.php app/Http/Controllers/Admin/VideoUploadController.php app/Http/Controllers/Student/VideoStreamController.php config/services.php tests/Feature/DirectVideoTest.php
+          git diff --exit-code
+      - run: php artisan test --compact
       - run: composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
       - run: composer check-platform-reqs --no-dev
       - run: npm ci --ignore-scripts --no-audit --no-fund
