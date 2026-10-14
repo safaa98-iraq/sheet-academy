@@ -39,8 +39,7 @@ jobs:
           git diff --exit-code
       - name: Prepare isolated test environment
         run: |
-          cp .env.example .env
-          php artisan key:generate --no-interaction
+          php -r 'file_put_contents(".env.testing", "APP_KEY=base64:".base64_encode(random_bytes(32)).PHP_EOL);'
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg poppler-utils
       - run: php artisan test --compact tests/Feature/DirectVideoTest.php
