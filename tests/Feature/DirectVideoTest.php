@@ -94,7 +94,7 @@ class DirectVideoTest extends TestCase
         ob_start();
         $response->baseResponse->sendContent();
         $this->assertSame(substr($this->mp4(), 0, 16), ob_get_clean());
-        $this->get($session['media_url'], ['Range' => 'bytes=999999-'])->assertStatus(416);
+        $this->get($session['media_url'], ['Range' => 'bytes=999999-1000000'])->assertStatus(416);
         $this->get(route('student.video.asset', ['video' => $video, 'student' => $student, 'asset' => 'source.mp4']))->assertForbidden();
         parse_str((string) parse_url($session['media_url'], PHP_URL_QUERY), $query);
         $wrong = URL::temporarySignedRoute('student.video.asset', now()->addMinute(), ['video' => $video, 'student' => $student, 'asset' => 'hls/master.m3u8', 'view' => $query['view']]);
